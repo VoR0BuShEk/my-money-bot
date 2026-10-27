@@ -135,7 +135,7 @@ async def add_debt_date(message: types.Message, state: FSMContext):
     data = await state.get_data()
     conn = sqlite3.connect('finance.db')
     cursor = conn.cursor()
-    cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?)",
+    cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
                    (message.from_user.id, data['title'], data['kind'], data['amount'], message.text))
     conn.commit()
     conn.close()
