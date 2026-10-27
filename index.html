@@ -3,111 +3,187 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <!-- Официальный скрипт Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>Мой Финансовый Трекер</title>
     <style>
+        :root {
+            --bg-color: var(--tg-theme-bg-color, #ffffff);
+            --text-color: var(--tg-theme-text-color, #000000);
+            --hint-color: var(--tg-theme-hint-color, #999999);
+            --button-color: var(--tg-theme-button-color, #2481cc);
+            --button-text-color: var(--tg-theme-button-text-color, #ffffff);
+            --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
+        }
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-            padding: 20px;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
             margin: 0;
+            padding: 16px;
+            padding-bottom: 80px; /* Место для нижнего меню */
         }
+
+        h2 {
+            margin-top: 0;
+            font-size: 24px;
+        }
+
+        /* Стили для вкладок */
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Карточки */
         .card {
-            background-color: var(--tg-theme-secondary-bg-color);
-            padding: 20px;
+            background-color: var(--secondary-bg);
             border-radius: 12px;
-            margin-bottom: 15px;
+            padding: 16px;
+            margin-bottom: 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
-        h2 { margin-top: 0; font-size: 22px; }
-        .form-group { margin-bottom: 15px; }
-        label { display: block; margin-bottom: 5px; font-size: 14px; color: var(--tg-theme-hint-color); }
-        input {
-            width: 100%;
-            padding: 12px;
-            border-radius: 8px;
-            border: 1px solid var(--tg-theme-hint-color);
-            background-color: var(--tg-theme-bg-color);
-            color: var(--tg-theme-text-color);
-            font-size: 16px;
-            box-sizing: border-box;
-        }
-        button {
-            background-color: var(--tg-theme-button-color);
-            color: var(--tg-theme-button-text-color);
-            border: none;
-            padding: 15px;
-            border-radius: 8px;
-            font-size: 16px;
+        .card-title {
             font-weight: bold;
-            width: 100%;
-            cursor: pointer;
+            font-size: 16px;
         }
-        button:active { opacity: 0.8; }
+        .card-subtitle {
+            font-size: 14px;
+            color: var(--hint-color);
+            margin-top: 4px;
+        }
+        .card-amount {
+            font-weight: bold;
+            font-size: 18px;
+            color: #e53935; /* Красный для долгов */
+        }
+        .goal-amount {
+            color: #43a047; /* Зеленый для целей */
+        }
+
+        /* Нижнее меню навигации */
+        .bottom-nav {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: var(--bg-color);
+            display: flex;
+            justify-content: space-around;
+            padding: 12px 0;
+            border-top: 1px solid var(--secondary-bg);
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
+        }
+        .nav-item {
+            text-align: center;
+            font-size: 12px;
+            color: var(--hint-color);
+            cursor: pointer;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            width: 33%;
+        }
+        .nav-item.active {
+            color: var(--button-color);
+        }
+        .nav-icon {
+            font-size: 20px;
+        }
     </style>
 </head>
 <body>
     <h2 id="greeting">Загрузка...</h2>
-    
-    <div class="card">
-        <h3>Добавить новый долг</h3>
-        
-        <div class="form-group">
-            <label>Название (кому или за что)</label>
-            <input type="text" id="debtTitle" placeholder="Например: Другу Васе">
-        </div>
-        
-        <div class="form-group">
-            <label>Сумма (руб.)</label>
-            <input type="number" id="debtAmount" placeholder="5000">
-        </div>
 
-        <div class="form-group">
-            <label>Срок (ГГГГ-ММ-ДД)</label>
-            <input type="date" id="debtDate">
+    <!-- Вкладка 1: Долги -->
+    <div id="tab-debts" class="tab-content active">
+        <div class="card">
+            <div>
+                <div class="card-title">Кредит на телефон</div>
+                <div class="card-subtitle">Срок: 15.11.2026</div>
+            </div>
+            <div class="card-amount">15 000 ₽</div>
         </div>
+        <div class="card">
+            <div>
+                <div class="card-title">Другу Васе</div>
+                <div class="card-subtitle">Срок: завтра</div>
+            </div>
+            <div class="card-amount">5 000 ₽</div>
+        </div>
+    </div>
 
-        <button onclick="saveDebt()">Сохранить долг</button>
+    <!-- Вкладка 2: Цели -->
+    <div id="tab-goals" class="tab-content">
+        <div class="card">
+            <div>
+                <div class="card-title">Отпуск на море 🌴</div>
+                <div class="card-subtitle">Накоплено 30 000 из 100 000</div>
+            </div>
+            <div class="card-amount goal-amount">30%</div>
+        </div>
+    </div>
+
+    <!-- Вкладка 3: Сбережения -->
+    <div id="tab-savings" class="tab-content">
+        <div class="card">
+            <div>
+                <div class="card-title">Зарплата</div>
+                <div class="card-subtitle">01.10.2026</div>
+            </div>
+            <div class="card-amount goal-amount">+ 50 000 ₽</div>
+        </div>
+    </div>
+
+    <!-- Нижнее меню -->
+    <div class="bottom-nav">
+        <div class="nav-item active" onclick="switchTab('debts', this)">
+            <div class="nav-icon">💳</div>
+            <div>Долги</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('goals', this)">
+            <div class="nav-icon">🎯</div>
+            <div>Цели</div>
+        </div>
+        <div class="nav-item" onclick="switchTab('savings', this)">
+            <div class="nav-icon">🏦</div>
+            <div>Сбережения</div>
+        </div>
     </div>
 
     <script>
+        // Инициализация Telegram Mini App
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
+        // Получаем данные пользователя
         const user = tg.initDataUnsafe?.user;
         if (user) {
             document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
+        } else {
+            document.getElementById('greeting').innerText = `Привет!`;
         }
 
-        // Устанавливаем сегодняшнюю дату в календарь по умолчанию
-        document.getElementById('debtDate').valueAsDate = new Date();
-
-        function saveDebt() {
-            const title = document.getElementById('debtTitle').value;
-            const amount = document.getElementById('debtAmount').value;
-            const date = document.getElementById('debtDate').value;
-
-            // Простая проверка на пустые поля
-            if (!title || !amount || !date) {
-                tg.showAlert("Пожалуйста, заполните все поля!");
-                return;
-            }
-
-            // Собираем данные в JSON
-            const data = {
-                action: "add_debt",
-                title: title,
-                amount: amount,
-                date: date
-            };
-
-            // Отправляем боту
-            tg.sendData(JSON.stringify(data));
+        // Функция переключения вкладок
+        function switchTab(tabName, element) {
+            // Скрываем все вкладки
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Убираем выделение со всех кнопок меню
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             
-            // Очищаем форму после отправки
-            document.getElementById('debtTitle').value = '';
-            document.getElementById('debtAmount').value = '';
+            // Показываем нужную вкладку и выделяем кнопку
+            document.getElementById('tab-' + tabName).classList.add('active');
+            element.classList.add('active');
+            
+            // Легкая вибрация при нажатии (доступна на iPhone и Android)
+            tg.HapticFeedback.impactOccurred('light');
         }
     </script>
 </body>
