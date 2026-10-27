@@ -109,6 +109,7 @@ async def add_debt_title(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
+    
     await state.update_data(title=message.text)
     await message.answer("Выбери тип:", reply_markup=kind_menu())
     await state.set_state(DebtForm.kind)
@@ -118,9 +119,13 @@ async def add_debt_kind(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    if message.text not in ["Мелкие", "Кредиты"]:
-        return await message.answer("Выбери кнопку: Мелкие или Кредиты")
-    await state.update_data(kind=message.text)
+    
+    # Более мягкая проверка (убираем пробелы и приводим к нижнему регистру)
+    clean_kind = message.text.strip().lower()
+    if clean_kind not in ["мелкие", "кредиты"]:
+        return await message.answer("Пожалуйста, нажми на кнопку 'Мелкие' или 'Кредиты' снизу.")
+    
+    await state.update_data(kind=message.text.strip())
     await message.answer("Введи сумму долга (только цифры):", reply_markup=back_menu())
     await state.set_state(DebtForm.amount)
 
@@ -130,7 +135,6 @@ async def add_debt_amount(message: types.Message, state: FSMContext):
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
     
-    # Очистка от пробелов и замена запятой на точку
     clean_text = message.text.replace(',', '.').replace(' ', '')
     try:
         amount = float(clean_text)
@@ -261,11 +265,10 @@ async def show_savings(message: types.Message):
     if not savings:
         await message.answer("Пока нет записей. Напиши 'Добавить сбережение'.")
     else:
-        # Безопасный подсчет общей суммы
         total = sum(s[1] for s in savings)
         await message.answer(f"Всего накоплений: {total} руб.\n")
         
-        for s in savings[-10:]: # Показываем последние 10
+        for s in savings[-10:]:
             text = f"💰 {s[1]} руб. ({s[2]}) — {s[3]}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
                 [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
