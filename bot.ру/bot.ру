@@ -2,6 +2,7 @@ import asyncio
 import os
 import sqlite3
 import re
+import json
 import logging
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, F, types
@@ -77,7 +78,7 @@ class SavingForm(StatesGroup):
 class DepositForm(StatesGroup):
     amount = State()
 
-# --- КЛАВИАТУРЫ ---
+# --- КЛАВИАТУРЫ (Объявлены ДО того, как их используют) ---
 def main_menu():
     kb = [
         [KeyboardButton(text="💰 Долги"), KeyboardButton(text="🎯 Цели")],
@@ -154,7 +155,7 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     
     # ⬇️ ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GITHUB PAGES ⬇️
-    my_app_url = "https://vor0bushek.github.io/my-money-bot/"
+    my_app_url = "https://ВАШ_ЛОГИН.github.io/НАЗВАНИЕ_РЕПОЗИТОРИЯ/"
     
     kb = ReplyKeyboardMarkup(
         keyboard=[
@@ -167,6 +168,40 @@ async def start(message: types.Message, state: FSMContext):
     )
     await message.answer("Привет! Нажми на кнопку ниже, чтобы открыть приложение:", reply_markup=kb)
 
+# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP =================
+@dp.message(F.web_app_data)
+async def handle_webapp_data(message: types.Message):
+    try:
+        data = json.loads(message.web_app_data.data)
+        
+        if data.get('action') == 'add_debt':
+            title = data.get('title', 'Без названия')
+            amount = float(data.get('amount', 0))
+            due_date = data.get('date')
+            
+            # Защита от дублирования (если нажали дважды)
+            existing = await asyncio.to_thread(
+                db_fetchall, 
+                "SELECT id FROM debts WHERE user_id = ? AND title = ? AND amount = ?", 
+                (message.from_user.id, title, amount)
+            )
+            
+            if not existing:
+                await asyncio.to_thread(
+                    db_execute, 
+                    "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
+                    (message.from_user.id, title, "Мелкие", amount, due_date)
+                )
+            
+            # ВОЗВРАЩАЕМ МЕНЮ
+            await message.answer(
+                f"✅ Долг «{title}» на сумму {amount} руб. сохранен!",
+                reply_markup=main_menu()
+            )
+    except Exception as e:
+        await message.answer(f"⚠️ Ошибка при обработке данных: {e}", reply_markup=main_menu())
+
+# ================= КНОПКИ =================
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -177,7 +212,6 @@ async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Выбери раздел:", reply_markup=main_menu())
     await callback.answer()
 
-# ================= КНОПКИ =================
 @dp.callback_query(F.data == "add_debt_btn")
 async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(DebtForm.title)
@@ -483,30 +517,10 @@ async def add_saving_source(message: types.Message, state: FSMContext):
     except Exception as e:
         await state.clear()
         await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
-# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP =================
-import json
 
-@dp.message(F.web_app_data)
-async def handle_webapp_data(message: types.Message):
+# --- ТОЧКА ВХОДА ---
+if __name__ == "__main__":
     try:
-        data = json.loads(message.web_app_data.data)
-        
-        if data.get('action') == 'add_debt':
-            title = data.get('title')
-            amount = float(data.get('amount'))
-            due_date = data.get('date')
-            
-            await asyncio.to_thread(
-                db_execute, 
-                "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
-                (message.from_user.id, title, "Мелкие", amount, due_date)
-            )
-            
-            # ВАЖНО: Возвращаем главное меню с кнопками!
-            await message.answer(
-                f"✅ Долг «{title}» на сумму {amount} руб. успешно добавлен из приложения!",
-                reply_markup=main_menu() 
-            )
-            
-    except Exception as e:
-        await message.answer(f"⚠️ Ошибка при обработке данных: {e}", reply_markup=main_menu())
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Бот остановлен.")
