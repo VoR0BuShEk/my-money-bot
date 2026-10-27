@@ -1,6 +1,7 @@
 import asyncio
 import os
 import sqlite3
+import re
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
@@ -110,7 +111,7 @@ async def main():
 # ================= СТАРТ =================
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
-    await state.clear() # Сбрасываем старые состояния
+    await state.clear()
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Начать", callback_data="go_main_menu")]
     ])
@@ -123,9 +124,8 @@ async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await callback.message.answer("Выбери раздел:", reply_markup=main_menu())
     await callback.answer()
 
-# ================= ОБРАБОТКА CALLBACK (КНОПОК) =================
+# ================= CALLBACK (КНОПКИ) =================
 
-# --- Долги ---
 @dp.callback_query(F.data == "add_debt_btn")
 async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(DebtForm.title)
@@ -154,7 +154,6 @@ async def delete_debt(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.answer("Долг удален!")
 
-# --- Цели ---
 @dp.callback_query(F.data == "add_goal_btn")
 async def add_goal_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(GoalForm.title)
@@ -180,7 +179,6 @@ async def delete_goal(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.answer("Цель удалена!")
 
-# --- Сбережения ---
 @dp.callback_query(F.data == "add_sav_btn")
 async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(SavingForm.amount)
@@ -198,7 +196,7 @@ async def delete_saving(callback: types.CallbackQuery):
     await callback.message.delete()
     await callback.answer("Сбережение удалено!")
 
-# ================= ОБРАБОТКА ТЕКСТА (МЕНЮ И ВВОДА) =================
+# ================= ТЕКСТОВЫЕ КОМАНДЫ =================
 
 @dp.message(F.text == "📊 Статистика")
 async def show_stats(message: types.Message):
@@ -299,7 +297,7 @@ async def show_savings(message: types.Message):
     ])
     await message.answer("Что хочешь сделать?", reply_markup=add_kb)
 
-# --- ВВОД ДАННЫХ (FSM) ---
+# ================= FSM ВВОД =================
 
 @dp.message(DebtForm.title)
 async def add_debt_title(message: types.Message, state: FSMContext):
@@ -322,16 +320,21 @@ async def add_debt_kind(message: types.Message, state: FSMContext):
     await message.answer("Введи сумму долга (только цифры):", reply_markup=back_menu())
     await state.set_state(DebtForm.amount)
 
+# --- ИСПРАВЛЕННЫЙ ВВОД СУММЫ ---
 @dp.message(DebtForm.amount)
 async def add_debt_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').replace(' ', '')
-    try:
-        amount = float(clean_text)
-    except ValueError:
-        return await message.answer("Ошибка! Введи только цифры (например: 5000)")
+    
+    # Ищем все цифры и точки в сообщении
+    clean_text = message.text.replace(',', '.').strip()
+    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    
+    if not match:
+        return await message.answer("Ошибка! Введи число (например: 5000 или 1500.50)")
+    
+    amount = float(match.group(1))
     await state.update_data(amount=amount)
     await message.answer("Введи срок в формате ГГГГ-ММ-ДД (например, 2026-12-31):", reply_markup=back_menu())
     await state.set_state(DebtForm.date)
@@ -371,11 +374,11 @@ async def add_goal_price(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').replace(' ', '')
-    try:
-        price = float(clean_text)
-    except ValueError:
+    clean_text = message.text.replace(',', '.').strip()
+    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    if not match:
         return await message.answer("Ошибка! Введи число.")
+    price = float(match.group(1))
     await state.update_data(price=price)
     await message.answer("Введи срок (ГГГГ-ММ-ДД):", reply_markup=back_menu())
     await state.set_state(GoalForm.date)
@@ -405,11 +408,11 @@ async def deposit_goal_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').replace(' ', '')
-    try:
-        amount = float(clean_text)
-    except ValueError:
+    clean_text = message.text.replace(',', '.').strip()
+    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    if not match:
         return await message.answer("Ошибка! Введи число.")
+    amount = float(match.group(1))
     
     data = await state.get_data()
     conn = sqlite3.connect('finance.db')
@@ -425,11 +428,12 @@ async def add_saving_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').replace(' ', '')
-    try:
-        amount = float(clean_text)
-    except ValueError:
+    clean_text = message.text.replace(',', '.').strip()
+    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    if not match:
         return await message.answer("Ошибка! Введи число.")
+    amount = float(match.group(1))
+    
     await state.update_data(amount=amount)
     await message.answer("Введи источник (например, 'Зарплата'):", reply_markup=back_menu())
     await state.set_state(SavingForm.source)
