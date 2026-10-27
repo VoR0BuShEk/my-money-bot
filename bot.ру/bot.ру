@@ -62,9 +62,19 @@ def back_menu():
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
+# 1. СТАРТ С КНОПКОЙ
 @dp.message(Command("start"))
 async def start(message: types.Message):
-    await message.answer("Привет! Я твой финансовый трекер. Выбери раздел:", reply_markup=main_menu())
+    kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="🚀 Начать", callback_data="go_main_menu")]
+    ])
+    await message.answer("Привет! Я твой финансовый трекер. Нажми кнопку ниже, чтобы начать:", reply_markup=kb)
+
+@dp.callback_query(F.data == "go_main_menu")
+async def go_to_main_menu(callback: types.CallbackQuery):
+    await callback.message.delete()
+    await callback.message.answer("Выбери раздел:", reply_markup=main_menu())
+    await callback.answer()
 
 # ================= ДОЛГИ =================
 
@@ -77,7 +87,7 @@ async def show_debts(message: types.Message):
     conn.close()
     
     if not debts:
-        await message.answer("У тебя пока нет долгов. Напиши 'Добавить долг', чтобы создать.")
+        await message.answer("У тебя пока нет долгов.")
     else:
         await message.answer("Твои долги:\n")
         for d in debts:
@@ -86,7 +96,17 @@ async def show_debts(message: types.Message):
                 [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_debt_{d[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
-        await message.answer("Напиши 'Добавить долг', чтобы добавить новый.", reply_markup=main_menu())
+    
+    add_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Добавить долг", callback_data="add_debt_btn")]
+    ])
+    await message.answer("Что хочешь сделать?", reply_markup=add_kb)
+
+@dp.callback_query(F.data == "add_debt_btn")
+async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введи название долга (например, 'Другу Васе'):", reply_markup=back_menu())
+    await state.set_state(DebtForm.title)
+    await callback.answer()
 
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
@@ -98,11 +118,6 @@ async def delete_debt(callback: types.CallbackQuery):
     conn.close()
     await callback.message.delete()
     await callback.answer("Долг удален!")
-
-@dp.message(F.text.lower() == "добавить долг")
-async def add_debt_start(message: types.Message, state: FSMContext):
-    await message.answer("Введи название долга (например, 'Другу Васе'):", reply_markup=back_menu())
-    await state.set_state(DebtForm.title)
 
 @dp.message(DebtForm.title)
 async def add_debt_title(message: types.Message, state: FSMContext):
@@ -120,7 +135,6 @@ async def add_debt_kind(message: types.Message, state: FSMContext):
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
     
-    # Более мягкая проверка (убираем пробелы и приводим к нижнему регистру)
     clean_kind = message.text.strip().lower()
     if clean_kind not in ["мелкие", "кредиты"]:
         return await message.answer("Пожалуйста, нажми на кнопку 'Мелкие' или 'Кредиты' снизу.")
@@ -178,7 +192,7 @@ async def show_goals(message: types.Message):
     conn.close()
     
     if not goals:
-        await message.answer("У тебя пока нет целей. Напиши 'Добавить цель'.")
+        await message.answer("У тебя пока нет целей.")
     else:
         await message.answer("Твои цели:\n")
         for g in goals:
@@ -187,7 +201,17 @@ async def show_goals(message: types.Message):
                 [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_goal_{g[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
-        await message.answer("Напиши 'Добавить цель', чтобы создать новую.", reply_markup=main_menu())
+    
+    add_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Добавить цель", callback_data="add_goal_btn")]
+    ])
+    await message.answer("Что хочешь сделать?", reply_markup=add_kb)
+
+@dp.callback_query(F.data == "add_goal_btn")
+async def add_goal_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введи название цели:", reply_markup=back_menu())
+    await state.set_state(GoalForm.title)
+    await callback.answer()
 
 @dp.callback_query(F.data.startswith("del_goal_"))
 async def delete_goal(callback: types.CallbackQuery):
@@ -199,11 +223,6 @@ async def delete_goal(callback: types.CallbackQuery):
     conn.close()
     await callback.message.delete()
     await callback.answer("Цель удалена!")
-
-@dp.message(F.text.lower() == "добавить цель")
-async def add_goal_start(message: types.Message, state: FSMContext):
-    await message.answer("Введи название цели:", reply_markup=back_menu())
-    await state.set_state(GoalForm.title)
 
 @dp.message(GoalForm.title)
 async def add_goal_title(message: types.Message, state: FSMContext):
@@ -263,7 +282,7 @@ async def show_savings(message: types.Message):
     conn.close()
     
     if not savings:
-        await message.answer("Пока нет записей. Напиши 'Добавить сбережение'.")
+        await message.answer("Пока нет записей.")
     else:
         total = sum(s[1] for s in savings)
         await message.answer(f"Всего накоплений: {total} руб.\n")
@@ -274,7 +293,17 @@ async def show_savings(message: types.Message):
                 [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
-        await message.answer("Напиши 'Добавить сбережение', чтобы добавить.", reply_markup=main_menu())
+    
+    add_kb = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text="➕ Добавить сбережение", callback_data="add_sav_btn")]
+    ])
+    await message.answer("Что хочешь сделать?", reply_markup=add_kb)
+
+@dp.callback_query(F.data == "add_sav_btn")
+async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
+    await callback.message.answer("Введи сумму:", reply_markup=back_menu())
+    await state.set_state(SavingForm.amount)
+    await callback.answer()
 
 @dp.callback_query(F.data.startswith("del_sav_"))
 async def delete_saving(callback: types.CallbackQuery):
@@ -286,11 +315,6 @@ async def delete_saving(callback: types.CallbackQuery):
     conn.close()
     await callback.message.delete()
     await callback.answer("Сбережение удалено!")
-
-@dp.message(F.text.lower() == "добавить сбережение")
-async def add_saving_start(message: types.Message, state: FSMContext):
-    await message.answer("Введи сумму:", reply_markup=back_menu())
-    await state.set_state(SavingForm.amount)
 
 @dp.message(SavingForm.amount)
 async def add_saving_amount(message: types.Message, state: FSMContext):
