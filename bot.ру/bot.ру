@@ -76,18 +76,20 @@ async def show_debts(message: types.Message):
     conn.close()
     
     if not debts:
-        await message.answer("У тебя пока нет долгов. Напиши 'Добавить долг', чтобы создать.")
+        text = "У тебя пока нет долгов. Напиши 'Добавить долг', чтобы создать."
+        await message.answer(text)
     else:
-        await message.answer("Твои долги:")
+        text = "Твои долги:\n\n"
         for d in debts:
             text = f"🔹 {d[1]} ({d[2]}) — {d[3]} руб. Срок: {d[4]}"
             # Создаем кнопку удаления для каждого долга
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="❌ Удалить", callback_data=f"del_debt_{d[0]}")]
+                [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_debt_{d[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
         await message.answer("Напиши 'Добавить долг', чтобы добавить новый.", reply_markup=main_menu())
 
+# Обработчик нажатия на кнопку удаления долга
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
@@ -96,7 +98,7 @@ async def delete_debt(callback: types.CallbackQuery):
     cursor.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
     conn.commit()
     conn.close()
-    await callback.message.delete() # Удаляем сообщение с долгом из чата
+    await callback.message.delete() # Удаляем сообщение с долгом
     await callback.answer("Долг удален!")
 
 @dp.message(F.text.lower() == "добавить долг")
@@ -167,13 +169,14 @@ async def show_goals(message: types.Message):
     conn.close()
     
     if not goals:
-        await message.answer("У тебя пока нет целей. Напиши 'Добавить цель'.")
+        text = "У тебя пока нет целей. Напиши 'Добавить цель'."
+        await message.answer(text)
     else:
-        await message.answer("Твои цели:")
+        text = "Твои цели:\n\n"
         for g in goals:
             text = f"🎯 {g[1]} — {g[2]} руб. Срок: {g[3]}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="❌ Удалить", callback_data=f"del_goal_{g[0]}")]
+                [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_goal_{g[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
         await message.answer("Напиши 'Добавить цель', чтобы создать новую.", reply_markup=main_menu())
@@ -251,25 +254,24 @@ async def show_savings(message: types.Message):
     if not savings:
         await message.answer("Пока нет записей. Напиши 'Добавить сбережение'.")
     else:
-        await message.answer("Твои записи:")
-        for s in savings:
+        for s in savings[-10:]: # Показываем последние 10
             text = f"💰 {s[1]} руб. ({s[2]}) — {s[3]}"
             kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="❌ Удалить", callback_data=f"del_sav_{s[0]}")]
+                [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
             ])
             await message.answer(text, reply_markup=kb)
         await message.answer("Напиши 'Добавить сбережение', чтобы добавить.", reply_markup=main_menu())
 
 @dp.callback_query(F.data.startswith("del_sav_"))
 async def delete_saving(callback: types.CallbackQuery):
-    saving_id = int(callback.data.split("_")[2])
+    sav_id = int(callback.data.split("_")[2])
     conn = sqlite3.connect('finance.db')
     cursor = conn.cursor()
-    cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (saving_id, callback.from_user.id))
+    cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
     conn.commit()
     conn.close()
     await callback.message.delete()
-    await callback.answer("Запись удалена!")
+    await callback.answer("Сбережение удалено!")
 
 @dp.message(F.text.lower() == "добавить сбережение")
 async def add_saving_start(message: types.Message, state: FSMContext):
