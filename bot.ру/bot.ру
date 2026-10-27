@@ -1,9 +1,9 @@
 import asyncio
 import os
-import sqlite3
 import re
 import logging
 from datetime import datetime, timedelta
+import aiosqlite
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -12,43 +12,34 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- НАСТРОЙКА ЛОГИРОВАНИЯ ---
 logging.basicConfig(level=logging.INFO)
 
-# --- БАЗА ДАННЫХ ---
+# Берем путь из переменной окружения (для платного тарифа), иначе текущая папка
 DB_PATH = os.getenv("DB_PATH", "bot_database.sqlite")
 
-def init_db():
+async def init_db():
     try:
         db_dir = os.path.dirname(DB_PATH)
         if db_dir and not os.path.exists(db_dir):
             os.makedirs(db_dir, exist_ok=True)
             
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.executescript('''
-            CREATE TABLE IF NOT EXISTS debts (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER, title TEXT, kind TEXT, amount REAL, due_date TEXT, is_paid INTEGER DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS goals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER, title TEXT, price REAL, due_date TEXT, saved REAL DEFAULT 0);
-            CREATE TABLE IF NOT EXISTS savings (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                user_id INTEGER, amount REAL, source TEXT, date TEXT);
-        ''')
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.executescript('''
+                CREATE TABLE IF NOT EXISTS debts (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER, title TEXT, kind TEXT, amount REAL, due_date TEXT, is_paid INTEGER DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS goals (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER, title TEXT, price REAL, due_date TEXT, saved REAL DEFAULT 0);
+                CREATE TABLE IF NOT EXISTS savings (
+                    id INTEGER PRIMARY KEY AUTOINCREMENT,
+                    user_id INTEGER, amount REAL, source TEXT, date TEXT);
+            ''')
+            await db.commit()
         print(f"✅ База данных готова: {DB_PATH}")
     except Exception as e:
         print(f"⚠️ Ошибка БД: {e}")
 
-init_db()
-
-def get_db():
-    return sqlite3.connect(DB_PATH)
-
-# --- СОСТОЯНИЯ (FSM) ---
 class DebtForm(StatesGroup):
     title = State()
     kind = State()
@@ -67,7 +58,6 @@ class SavingForm(StatesGroup):
 class DepositForm(StatesGroup):
     amount = State()
 
-# --- КЛАВИАТУРЫ ---
 def main_menu():
     kb = [
         [KeyboardButton(text="💰 Долги"), KeyboardButton(text="🎯 Цели")],
@@ -82,21 +72,17 @@ def kind_menu():
 def back_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Отмена")]], resize_keyboard=True, one_time_keyboard=True)
 
-# --- ОСНОВНОЙ КОД ---
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- ФОНОВАЯ ЗАДАЧА ---
 async def check_reminders():
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
-        debts = cursor.fetchall()
-        cursor.execute("SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,))
-        goals = cursor.fetchall()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,)) as cursor:
+                debts = await cursor.fetchall()
+            async with db.execute("SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,)) as cursor:
+                goals = await cursor.fetchall()
 
         for d in debts:
             try:
@@ -112,7 +98,7 @@ async def check_reminders():
         print(f"Ошибка напоминаний: {e}")
 
 async def main():
-    # Запускаем планировщик ПОСЛЕ инициализации бота
+    await init_db()
     try:
         scheduler = AsyncIOScheduler()
         scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
@@ -122,6 +108,28 @@ async def main():
         
     print("🚀 Бот запущен...")
     await dp.start_polling(bot)
+
+# Умный парсинг даты
+def parse_date_smart(text):
+    text = text.strip().lower()
+    
+    if "завтра" in text:
+        return (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
+    if "сегодня" in text:
+        return datetime.now().strftime('%Y-%m-%d')
+    if "через неделю" in text:
+        return (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
+
+    clean_text = text.replace('.', '-').replace('/', '-').replace(' ', '')
+    
+    formats = ['%Y-%m-%d', '%d-%m-%Y', '%d-%m-%y']
+    for fmt in formats:
+        try:
+            dt = datetime.strptime(clean_text, fmt)
+            return dt.strftime('%Y-%m-%d')
+        except ValueError:
+            continue
+    return None
 
 # ================= СТАРТ =================
 @dp.message(Command("start"))
@@ -137,13 +145,12 @@ async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
     try:
         await callback.message.delete()
-    except:
+    except Exception:
         pass
     await callback.message.answer("Выбери раздел:", reply_markup=main_menu())
     await callback.answer()
 
-# ================= CALLBACK (КНОПКИ) =================
-
+# ================= КНОПКИ =================
 @dp.callback_query(F.data == "add_debt_btn")
 async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(DebtForm.title)
@@ -154,33 +161,25 @@ async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
 async def pay_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
-        conn.commit()
-        conn.close()
-        # Защита от падения при редактировании сообщения
-        new_text = f"{callback.message.text}\n\n✅ Долг закрыт!"
-        await callback.message.edit_text(new_text, reply_markup=None)
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
+            await db.commit()
+        await callback.message.edit_text(f"{callback.message.text}\n\n✅ Долг закрыт!", reply_markup=None)
         await callback.answer("Долг погашен.")
-    except Exception as e:
+    except Exception:
         await callback.answer("Ошибка или долг уже закрыт.")
-        print(f"Ошибка pay_debt: {e}")
 
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
+            await db.commit()
         await callback.message.delete()
         await callback.answer("Долг удален!")
-    except Exception as e:
+    except Exception:
         await callback.answer("Ошибка удаления.")
-        print(f"Ошибка del_debt: {e}")
 
 @dp.callback_query(F.data == "add_goal_btn")
 async def add_goal_start(callback: types.CallbackQuery, state: FSMContext):
@@ -200,16 +199,13 @@ async def deposit_goal_start(callback: types.CallbackQuery, state: FSMContext):
 async def delete_goal(callback: types.CallbackQuery):
     goal_id = int(callback.data.split("_")[2])
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, callback.from_user.id))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, callback.from_user.id))
+            await db.commit()
         await callback.message.delete()
         await callback.answer("Цель удалена!")
-    except Exception as e:
+    except Exception:
         await callback.answer("Ошибка удаления.")
-        print(f"Ошибка del_goal: {e}")
 
 @dp.callback_query(F.data == "add_sav_btn")
 async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
@@ -221,33 +217,27 @@ async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
 async def delete_saving(callback: types.CallbackQuery):
     sav_id = int(callback.data.split("_")[2])
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
+            await db.commit()
         await callback.message.delete()
         await callback.answer("Сбережение удалено!")
-    except Exception as e:
+    except Exception:
         await callback.answer("Ошибка удаления.")
-        print(f"Ошибка del_sav: {e}")
 
-# ================= ТЕКСТОВЫЕ КОМАНДЫ =================
-
+# ================= МЕНЮ =================
 @dp.message(F.text == "📊 Статистика")
 async def show_stats(message: types.Message):
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,))
-        total_debts = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT SUM(saved) FROM goals WHERE user_id = ?", (message.from_user.id,))
-        total_goals_saved = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT SUM(price) FROM goals WHERE user_id = ?", (message.from_user.id,))
-        total_goals_price = cursor.fetchone()[0] or 0
-        cursor.execute("SELECT SUM(amount) FROM savings WHERE user_id = ?", (message.from_user.id,))
-        total_savings = cursor.fetchone()[0] or 0
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,)) as cursor:
+                total_debts = (await cursor.fetchone())[0] or 0
+            async with db.execute("SELECT SUM(saved) FROM goals WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                total_goals_saved = (await cursor.fetchone())[0] or 0
+            async with db.execute("SELECT SUM(price) FROM goals WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                total_goals_price = (await cursor.fetchone())[0] or 0
+            async with db.execute("SELECT SUM(amount) FROM savings WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                total_savings = (await cursor.fetchone())[0] or 0
 
         text = (
             f"📊 Твоя финансовая сводка:\n\n"
@@ -256,18 +246,15 @@ async def show_stats(message: types.Message):
             f"🏦 Свободные сбережения: {total_savings} руб.\n"
         )
         await message.answer(text)
-    except Exception as e:
-        await message.answer("Ошибка при подсчете статистики.")
-        print(f"Ошибка статистики: {e}")
+    except Exception:
+        await message.answer("Ошибка при подсчете.")
 
 @dp.message(F.text == "💰 Долги")
 async def show_debts(message: types.Message):
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (message.from_user.id,))
-        debts = cursor.fetchall()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                debts = await cursor.fetchall()
         
         if not debts:
             await message.answer("У тебя пока нет долгов.")
@@ -281,8 +268,8 @@ async def show_debts(message: types.Message):
                     kb_list.append([InlineKeyboardButton(text="✅ Отметить оплаченным", callback_data=f"pay_debt_{d[0]}")])
                 kb_list.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_debt_{d[0]}")])
                 await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_list))
-    except Exception as e:
-        print(f"Ошибка показа долгов: {e}")
+    except Exception:
+        pass
 
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить долг", callback_data="add_debt_btn")]
@@ -292,11 +279,9 @@ async def show_debts(message: types.Message):
 @dp.message(F.text == "🎯 Цели")
 async def show_goals(message: types.Message):
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (message.from_user.id,))
-        goals = cursor.fetchall()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                goals = await cursor.fetchall()
         
         if not goals:
             await message.answer("У тебя пока нет целей.")
@@ -310,8 +295,8 @@ async def show_goals(message: types.Message):
                     [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_goal_{g[0]}")]
                 ])
                 await message.answer(text, reply_markup=kb)
-    except Exception as e:
-        print(f"Ошибка показа целей: {e}")
+    except Exception:
+        pass
         
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить цель", callback_data="add_goal_btn")]
@@ -321,11 +306,9 @@ async def show_goals(message: types.Message):
 @dp.message(F.text == "🏦 Сбережения")
 async def show_savings(message: types.Message):
     try:
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("SELECT id, amount, source, date FROM savings WHERE user_id = ?", (message.from_user.id,))
-        savings = cursor.fetchall()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            async with db.execute("SELECT id, amount, source, date FROM savings WHERE user_id = ?", (message.from_user.id,)) as cursor:
+                savings = await cursor.fetchall()
         
         if not savings:
             await message.answer("Пока нет записей.")
@@ -338,15 +321,16 @@ async def show_savings(message: types.Message):
                     [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
                 ])
                 await message.answer(text, reply_markup=kb)
-    except Exception as e:
-        print(f"Ошибка показа сбережений: {e}")
+    except Exception:
+        pass
 
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить сбережение", callback_data="add_sav_btn")]
     ])
     await message.answer("Что хочешь сделать?", reply_markup=add_kb)
 
-# ================= FSM ВВОД =================
+# ================= ВВОД =================
+# Добавлена защита: если вы напишете текст в меню, он не будет проигнорирован
 
 @dp.message(DebtForm.title)
 async def add_debt_title(message: types.Message, state: FSMContext):
@@ -379,7 +363,7 @@ async def add_debt_amount(message: types.Message, state: FSMContext):
         return await message.answer("Ошибка! Введи число.")
     amount = float(match.group(1))
     await state.update_data(amount=amount)
-    await message.answer("Введи срок (ГГГГ-ММ-ДД):", reply_markup=back_menu())
+    await message.answer("Введи срок (ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или 'завтра'):", reply_markup=back_menu())
     await state.set_state(DebtForm.date)
 
 @dp.message(DebtForm.date)
@@ -387,20 +371,17 @@ async def add_debt_date(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_date = message.text.strip()
-    try:
-        datetime.strptime(clean_date, '%Y-%m-%d')
-    except ValueError:
-        return await message.answer("Ошибка! Введи дату как 2026-12-31")
+    
+    clean_date = parse_date_smart(message.text)
+    if not clean_date:
+        return await message.answer("❌ Не понял дату. Напиши, например: 2026-12-31, 31.12.2026 или 'завтра'")
     
     try:
         data = await state.get_data()
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
-                       (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
+                             (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
+            await db.commit()
         await state.clear()
         await message.answer("Долг сохранен!", reply_markup=main_menu())
     except Exception as e:
@@ -426,7 +407,7 @@ async def add_goal_price(message: types.Message, state: FSMContext):
         return await message.answer("Ошибка! Введи число.")
     price = float(match.group(1))
     await state.update_data(price=price)
-    await message.answer("Введи срок (ГГГГ-ММ-ДД):", reply_markup=back_menu())
+    await message.answer("Введи срок (ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или 'завтра'):", reply_markup=back_menu())
     await state.set_state(GoalForm.date)
 
 @dp.message(GoalForm.date)
@@ -434,19 +415,17 @@ async def add_goal_date(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_date = message.text.strip()
-    try:
-        datetime.strptime(clean_date, '%Y-%m-%d')
-    except ValueError:
-        return await message.answer("Ошибка! Введи дату как 2026-12-31")
+    
+    clean_date = parse_date_smart(message.text)
+    if not clean_date:
+        return await message.answer("❌ Не понял дату. Напиши, например: 2026-12-31, 31.12.2026 или 'завтра'")
+        
     try:
         data = await state.get_data()
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)",
-                       (message.from_user.id, data['title'], data['price'], clean_date))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)",
+                             (message.from_user.id, data['title'], data['price'], clean_date))
+            await db.commit()
         await state.clear()
         await message.answer("Цель сохранена!", reply_markup=main_menu())
     except Exception as e:
@@ -465,11 +444,9 @@ async def deposit_goal_amount(message: types.Message, state: FSMContext):
     
     try:
         data = await state.get_data()
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
+            await db.commit()
         await state.clear()
         await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
     except Exception as e:
@@ -498,12 +475,10 @@ async def add_saving_source(message: types.Message, state: FSMContext):
     try:
         data = await state.get_data()
         now = datetime.now().strftime("%Y-%m-%d")
-        conn = get_db()
-        cursor = conn.cursor()
-        cursor.execute("INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
-                       (message.from_user.id, data['amount'], message.text, now))
-        conn.commit()
-        conn.close()
+        async with aiosqlite.connect(DB_PATH) as db:
+            await db.execute("INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
+                             (message.from_user.id, data['amount'], message.text, now))
+            await db.commit()
         await state.clear()
         await message.answer("Сбережение добавлено!", reply_markup=main_menu())
     except Exception as e:
