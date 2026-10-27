@@ -1,2 +1,2 @@
 aiogram
-aiogram-fsm-sqlitestorage
+apscheduler
