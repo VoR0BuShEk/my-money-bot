@@ -483,7 +483,32 @@ async def add_saving_source(message: types.Message, state: FSMContext):
     except Exception as e:
         await state.clear()
         await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
+# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP =================
+import json
 
+@dp.message(F.web_app_data)
+async def handle_webapp_data(message: types.Message):
+    try:
+        # Расшифровываем JSON, который прислал сайт
+        data = json.loads(message.web_app_data.data)
+        
+        if data.get('action') == 'add_debt':
+            title = data.get('title')
+            amount = float(data.get('amount'))
+            due_date = data.get('date')
+            
+            # Сохраняем в базу данных (тип "Мелкие" ставим по умолчанию, 
+            # так как мы не спрашивали его на сайте)
+            await asyncio.to_thread(
+                db_execute, 
+                "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
+                (message.from_user.id, title, "Мелкие", amount, due_date)
+            )
+            
+            await message.answer(f"✅ Долг «{title}» на сумму {amount} руб. успешно добавлен из приложения!")
+            
+    except Exception as e:
+        await message.answer(f"⚠️ Ошибка при обработке данных: {e}")
 # --- ТОЧКА ВХОДА ---
 if __name__ == "__main__":
     try:
