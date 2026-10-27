@@ -16,11 +16,15 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 logging.basicConfig(level=logging.INFO)
 
 # --- БАЗА ДАННЫХ ---
-DB_NAME = 'bot_database.sqlite'
+DB_PATH = os.getenv("DB_PATH", "bot_database.sqlite")
 
 def init_db():
     try:
-        conn = sqlite3.connect(DB_NAME)
+        db_dir = os.path.dirname(DB_PATH)
+        if db_dir and not os.path.exists(db_dir):
+            os.makedirs(db_dir, exist_ok=True)
+            
+        conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.executescript('''
             CREATE TABLE IF NOT EXISTS debts (
@@ -35,10 +39,14 @@ def init_db():
         ''')
         conn.commit()
         conn.close()
+        print(f"✅ База данных готова: {DB_PATH}")
     except Exception as e:
-        print(f"Ошибка инициализации БД: {e}")
+        print(f"⚠️ Ошибка БД: {e}")
 
 init_db()
+
+def get_db():
+    return sqlite3.connect(DB_PATH)
 
 # --- СОСТОЯНИЯ (FSM) ---
 class DebtForm(StatesGroup):
@@ -78,11 +86,11 @@ def back_menu():
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- ФОНОВАЯ ЗАДАЧА (БЕЗ MARKDOWN, ЧТОБЫ НЕ ПАДАЛО) ---
+# --- ФОНОВАЯ ЗАДАЧА ---
 async def check_reminders():
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute("SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
         debts = cursor.fetchall()
@@ -91,24 +99,31 @@ async def check_reminders():
         conn.close()
 
         for d in debts:
-            text = f"🔔 Напоминание! Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб."
-            await bot.send_message(d[0], text) # Убрали parse_mode, чтобы не было ошибок
-
+            try:
+                await bot.send_message(d[0], f"🔔 Напоминание! Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб.")
+            except Exception:
+                pass
         for g in goals:
-            text = f"🔔 Напоминание! Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)"
-            await bot.send_message(g[0], text)
+            try:
+                await bot.send_message(g[0], f"🔔 Напоминание! Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)")
+            except Exception:
+                pass
     except Exception as e:
         print(f"Ошибка напоминаний: {e}")
 
 async def main():
-    scheduler = AsyncIOScheduler()
-    scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
-    scheduler.start()
-    print("Бот запущен...")
+    # Запускаем планировщик ПОСЛЕ инициализации бота
+    try:
+        scheduler = AsyncIOScheduler()
+        scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
+        scheduler.start()
+    except Exception as e:
+        print(f"Ошибка планировщика: {e}")
+        
+    print("🚀 Бот запущен...")
     await dp.start_polling(bot)
 
 # ================= СТАРТ =================
-# ИСПРАВЛЕНО: добавлен state: FSMContext
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
@@ -120,7 +135,10 @@ async def start(message: types.Message, state: FSMContext):
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
-    await callback.message.delete()
+    try:
+        await callback.message.delete()
+    except:
+        pass
     await callback.message.answer("Выбери раздел:", reply_markup=main_menu())
     await callback.answer()
 
@@ -136,29 +154,33 @@ async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
 async def pay_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
     try:
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute("UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
         conn.commit()
         conn.close()
-        
+        # Защита от падения при редактировании сообщения
         new_text = f"{callback.message.text}\n\n✅ Долг закрыт!"
         await callback.message.edit_text(new_text, reply_markup=None)
         await callback.answer("Долг погашен.")
     except Exception as e:
-        await callback.answer("Ошибка при обновлении.")
+        await callback.answer("Ошибка или долг уже закрыт.")
         print(f"Ошибка pay_debt: {e}")
 
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
-    conn.commit()
-    conn.close()
-    await callback.message.delete()
-    await callback.answer("Долг удален!")
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
+        conn.commit()
+        conn.close()
+        await callback.message.delete()
+        await callback.answer("Долг удален!")
+    except Exception as e:
+        await callback.answer("Ошибка удаления.")
+        print(f"Ошибка del_debt: {e}")
 
 @dp.callback_query(F.data == "add_goal_btn")
 async def add_goal_start(callback: types.CallbackQuery, state: FSMContext):
@@ -177,13 +199,17 @@ async def deposit_goal_start(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.startswith("del_goal_"))
 async def delete_goal(callback: types.CallbackQuery):
     goal_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, callback.from_user.id))
-    conn.commit()
-    conn.close()
-    await callback.message.delete()
-    await callback.answer("Цель удалена!")
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, callback.from_user.id))
+        conn.commit()
+        conn.close()
+        await callback.message.delete()
+        await callback.answer("Цель удалена!")
+    except Exception as e:
+        await callback.answer("Ошибка удаления.")
+        print(f"Ошибка del_goal: {e}")
 
 @dp.callback_query(F.data == "add_sav_btn")
 async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
@@ -194,60 +220,70 @@ async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.startswith("del_sav_"))
 async def delete_saving(callback: types.CallbackQuery):
     sav_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
-    conn.commit()
-    conn.close()
-    await callback.message.delete()
-    await callback.answer("Сбережение удалено!")
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
+        conn.commit()
+        conn.close()
+        await callback.message.delete()
+        await callback.answer("Сбережение удалено!")
+    except Exception as e:
+        await callback.answer("Ошибка удаления.")
+        print(f"Ошибка del_sav: {e}")
 
 # ================= ТЕКСТОВЫЕ КОМАНДЫ =================
 
 @dp.message(F.text == "📊 Статистика")
 async def show_stats(message: types.Message):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,))
-    total_debts = cursor.fetchone()[0] or 0
-    cursor.execute("SELECT SUM(saved) FROM goals WHERE user_id = ?", (message.from_user.id,))
-    total_goals_saved = cursor.fetchone()[0] or 0
-    cursor.execute("SELECT SUM(price) FROM goals WHERE user_id = ?", (message.from_user.id,))
-    total_goals_price = cursor.fetchone()[0] or 0
-    cursor.execute("SELECT SUM(amount) FROM savings WHERE user_id = ?", (message.from_user.id,))
-    total_savings = cursor.fetchone()[0] or 0
-    conn.close()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,))
+        total_debts = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT SUM(saved) FROM goals WHERE user_id = ?", (message.from_user.id,))
+        total_goals_saved = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT SUM(price) FROM goals WHERE user_id = ?", (message.from_user.id,))
+        total_goals_price = cursor.fetchone()[0] or 0
+        cursor.execute("SELECT SUM(amount) FROM savings WHERE user_id = ?", (message.from_user.id,))
+        total_savings = cursor.fetchone()[0] or 0
+        conn.close()
 
-    # Убран Markdown для надежности
-    text = (
-        f"📊 Твоя финансовая сводка:\n\n"
-        f"🔴 Активные долги: {total_debts} руб.\n"
-        f"🎯 Цели: Накоплено {total_goals_saved} из {total_goals_price} руб.\n"
-        f"🏦 Свободные сбережения: {total_savings} руб.\n"
-    )
-    await message.answer(text)
+        text = (
+            f"📊 Твоя финансовая сводка:\n\n"
+            f"🔴 Активные долги: {total_debts} руб.\n"
+            f"🎯 Цели: Накоплено {total_goals_saved} из {total_goals_price} руб.\n"
+            f"🏦 Свободные сбережения: {total_savings} руб.\n"
+        )
+        await message.answer(text)
+    except Exception as e:
+        await message.answer("Ошибка при подсчете статистики.")
+        print(f"Ошибка статистики: {e}")
 
 @dp.message(F.text == "💰 Долги")
 async def show_debts(message: types.Message):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (message.from_user.id,))
-    debts = cursor.fetchall()
-    conn.close()
-    
-    if not debts:
-        await message.answer("У тебя пока нет долгов.")
-    else:
-        await message.answer("Твои долги:\n")
-        for d in debts:
-            status = "✅ Оплачен" if d[5] == 1 else f"Срок: {d[4]}"
-            text = f"🔹 {d[1]} ({d[2]}) — {d[3]} руб. | {status}"
-            kb_list = []
-            if d[5] == 0:
-                kb_list.append([InlineKeyboardButton(text="✅ Отметить оплаченным", callback_data=f"pay_debt_{d[0]}")])
-            kb_list.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_debt_{d[0]}")])
-            await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_list))
-    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (message.from_user.id,))
+        debts = cursor.fetchall()
+        conn.close()
+        
+        if not debts:
+            await message.answer("У тебя пока нет долгов.")
+        else:
+            await message.answer("Твои долги:\n")
+            for d in debts:
+                status = "✅ Оплачен" if d[5] == 1 else f"Срок: {d[4]}"
+                text = f"🔹 {d[1]} ({d[2]}) — {d[3]} руб. | {status}"
+                kb_list = []
+                if d[5] == 0:
+                    kb_list.append([InlineKeyboardButton(text="✅ Отметить оплаченным", callback_data=f"pay_debt_{d[0]}")])
+                kb_list.append([InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_debt_{d[0]}")])
+                await message.answer(text, reply_markup=InlineKeyboardMarkup(inline_keyboard=kb_list))
+    except Exception as e:
+        print(f"Ошибка показа долгов: {e}")
+
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить долг", callback_data="add_debt_btn")]
     ])
@@ -255,25 +291,28 @@ async def show_debts(message: types.Message):
 
 @dp.message(F.text == "🎯 Цели")
 async def show_goals(message: types.Message):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (message.from_user.id,))
-    goals = cursor.fetchall()
-    conn.close()
-    
-    if not goals:
-        await message.answer("У тебя пока нет целей.")
-    else:
-        await message.answer("Твои цели:\n")
-        for g in goals:
-            progress = int((g[4] / g[2]) * 100) if g[2] > 0 else 0
-            text = f"🎯 {g[1]} — {g[2]} руб. (Срок: {g[3]})\n📈 Накоплено: {g[4]} руб. ({progress}%)"
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="💵 Пополнить", callback_data=f"dep_goal_{g[0]}")],
-                [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_goal_{g[0]}")]
-            ])
-            await message.answer(text, reply_markup=kb)
-    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (message.from_user.id,))
+        goals = cursor.fetchall()
+        conn.close()
+        
+        if not goals:
+            await message.answer("У тебя пока нет целей.")
+        else:
+            await message.answer("Твои цели:\n")
+            for g in goals:
+                progress = int((g[4] / g[2]) * 100) if g[2] > 0 else 0
+                text = f"🎯 {g[1]} — {g[2]} руб. (Срок: {g[3]})\n📈 Накоплено: {g[4]} руб. ({progress}%)"
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="💵 Пополнить", callback_data=f"dep_goal_{g[0]}")],
+                    [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_goal_{g[0]}")]
+                ])
+                await message.answer(text, reply_markup=kb)
+    except Exception as e:
+        print(f"Ошибка показа целей: {e}")
+        
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить цель", callback_data="add_goal_btn")]
     ])
@@ -281,24 +320,27 @@ async def show_goals(message: types.Message):
 
 @dp.message(F.text == "🏦 Сбережения")
 async def show_savings(message: types.Message):
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("SELECT id, amount, source, date FROM savings WHERE user_id = ?", (message.from_user.id,))
-    savings = cursor.fetchall()
-    conn.close()
-    
-    if not savings:
-        await message.answer("Пока нет записей.")
-    else:
-        total = sum(s[1] for s in savings)
-        await message.answer(f"Всего накоплений: {total} руб.\n")
-        for s in savings[-10:]:
-            text = f"💰 {s[1]} руб. ({s[2]}) — {s[3]}"
-            kb = InlineKeyboardMarkup(inline_keyboard=[
-                [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
-            ])
-            await message.answer(text, reply_markup=kb)
-    
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("SELECT id, amount, source, date FROM savings WHERE user_id = ?", (message.from_user.id,))
+        savings = cursor.fetchall()
+        conn.close()
+        
+        if not savings:
+            await message.answer("Пока нет записей.")
+        else:
+            total = sum(s[1] for s in savings)
+            await message.answer(f"Всего накоплений: {total} руб.\n")
+            for s in savings[-10:]:
+                text = f"💰 {s[1]} руб. ({s[2]}) — {s[3]}"
+                kb = InlineKeyboardMarkup(inline_keyboard=[
+                    [InlineKeyboardButton(text="🗑 Удалить", callback_data=f"del_sav_{s[0]}")]
+                ])
+                await message.answer(text, reply_markup=kb)
+    except Exception as e:
+        print(f"Ошибка показа сбережений: {e}")
+
     add_kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="➕ Добавить сбережение", callback_data="add_sav_btn")]
     ])
@@ -353,7 +395,7 @@ async def add_debt_date(message: types.Message, state: FSMContext):
     
     try:
         data = await state.get_data()
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
                        (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
@@ -362,8 +404,8 @@ async def add_debt_date(message: types.Message, state: FSMContext):
         await state.clear()
         await message.answer("Долг сохранен!", reply_markup=main_menu())
     except Exception as e:
-        await message.answer(f"⚠️ Ошибка БД: {e}", reply_markup=main_menu())
         await state.clear()
+        await message.answer(f"❌ ОШИБКА ДИСКА: {e}", reply_markup=main_menu())
 
 @dp.message(GoalForm.title)
 async def add_goal_title(message: types.Message, state: FSMContext):
@@ -399,7 +441,7 @@ async def add_goal_date(message: types.Message, state: FSMContext):
         return await message.answer("Ошибка! Введи дату как 2026-12-31")
     try:
         data = await state.get_data()
-        conn = sqlite3.connect(DB_NAME)
+        conn = get_db()
         cursor = conn.cursor()
         cursor.execute("INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)",
                        (message.from_user.id, data['title'], data['price'], clean_date))
@@ -408,8 +450,8 @@ async def add_goal_date(message: types.Message, state: FSMContext):
         await state.clear()
         await message.answer("Цель сохранена!", reply_markup=main_menu())
     except Exception as e:
-        await message.answer(f"⚠️ Ошибка БД: {e}", reply_markup=main_menu())
         await state.clear()
+        await message.answer(f"❌ ОШИБКА ДИСКА: {e}", reply_markup=main_menu())
 
 @dp.message(DepositForm.amount)
 async def deposit_goal_amount(message: types.Message, state: FSMContext):
@@ -421,14 +463,18 @@ async def deposit_goal_amount(message: types.Message, state: FSMContext):
         return await message.answer("Ошибка! Введи число.")
     amount = float(match.group(1))
     
-    data = await state.get_data()
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
-    conn.commit()
-    conn.close()
-    await state.clear()
-    await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
+    try:
+        data = await state.get_data()
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
+        conn.commit()
+        conn.close()
+        await state.clear()
+        await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
+    except Exception as e:
+        await state.clear()
+        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
 
 @dp.message(SavingForm.amount)
 async def add_saving_amount(message: types.Message, state: FSMContext):
@@ -449,17 +495,24 @@ async def add_saving_source(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    data = await state.get_data()
-    now = datetime.now().strftime("%Y-%m-%d")
-    conn = sqlite3.connect(DB_NAME)
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
-                   (message.from_user.id, data['amount'], message.text, now))
-    conn.commit()
-    conn.close()
-    await state.clear()
-    await message.answer("Сбережение добавлено!", reply_markup=main_menu())
+    try:
+        data = await state.get_data()
+        now = datetime.now().strftime("%Y-%m-%d")
+        conn = get_db()
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
+                       (message.from_user.id, data['amount'], message.text, now))
+        conn.commit()
+        conn.close()
+        await state.clear()
+        await message.answer("Сбережение добавлено!", reply_markup=main_menu())
+    except Exception as e:
+        await state.clear()
+        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
 
 # --- ТОЧКА ВХОДА ---
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except (KeyboardInterrupt, SystemExit):
+        print("Бот остановлен.")
