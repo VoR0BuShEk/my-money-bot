@@ -2,6 +2,7 @@ import asyncio
 import os
 import sqlite3
 import re
+import logging
 from datetime import datetime, timedelta
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
@@ -11,32 +12,31 @@ from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup, ReplyKeybo
 from aiogram.fsm.storage.memory import MemoryStorage
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
-# --- БАЗА ДАННЫХ ---
-def init_db():
-    conn = sqlite3.connect('finance.db')
-    cursor = conn.cursor()
-    cursor.execute('''CREATE TABLE IF NOT EXISTS debts (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER, title TEXT, kind TEXT, amount REAL, due_date TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS goals (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER, title TEXT, price REAL, due_date TEXT)''')
-    cursor.execute('''CREATE TABLE IF NOT EXISTS savings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER, amount REAL, source TEXT, date TEXT)''')
-    
-    try:
-        cursor.execute("ALTER TABLE debts ADD COLUMN is_paid INTEGER DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass 
-    
-    try:
-        cursor.execute("ALTER TABLE goals ADD COLUMN saved REAL DEFAULT 0")
-    except sqlite3.OperationalError:
-        pass 
+# --- НАСТРОЙКА ЛОГИРОВАНИЯ ---
+logging.basicConfig(level=logging.INFO)
 
-    conn.commit()
-    conn.close()
+# --- БАЗА ДАННЫХ ---
+DB_NAME = 'bot_database.sqlite'
+
+def init_db():
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.executescript('''
+            CREATE TABLE IF NOT EXISTS debts (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, title TEXT, kind TEXT, amount REAL, due_date TEXT, is_paid INTEGER DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS goals (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, title TEXT, price REAL, due_date TEXT, saved REAL DEFAULT 0);
+            CREATE TABLE IF NOT EXISTS savings (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id INTEGER, amount REAL, source TEXT, date TEXT);
+        ''')
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        print(f"Ошибка инициализации БД: {e}")
 
 init_db()
 
@@ -78,28 +78,27 @@ def back_menu():
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- ФОНОВАЯ ЗАДАЧА ---
+# --- ФОНОВАЯ ЗАДАЧА (БЕЗ MARKDOWN, ЧТОБЫ НЕ ПАДАЛО) ---
 async def check_reminders():
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
-    conn = sqlite3.connect('finance.db')
-    cursor = conn.cursor()
-    cursor.execute("SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
-    debts = cursor.fetchall()
-    cursor.execute("SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,))
-    goals = cursor.fetchall()
-    conn.close()
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
+        debts = cursor.fetchall()
+        cursor.execute("SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,))
+        goals = cursor.fetchall()
+        conn.close()
 
-    for d in debts:
-        try:
-            await bot.send_message(d[0], f"🔔 *Напоминание!* Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб.", parse_mode="Markdown")
-        except Exception:
-            pass
+        for d in debts:
+            text = f"🔔 Напоминание! Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб."
+            await bot.send_message(d[0], text) # Убрали parse_mode, чтобы не было ошибок
 
-    for g in goals:
-        try:
-            await bot.send_message(g[0], f"🔔 *Напоминание!* Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)", parse_mode="Markdown")
-        except Exception:
-            pass
+        for g in goals:
+            text = f"🔔 Напоминание! Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)"
+            await bot.send_message(g[0], text)
+    except Exception as e:
+        print(f"Ошибка напоминаний: {e}")
 
 async def main():
     scheduler = AsyncIOScheduler()
@@ -109,13 +108,14 @@ async def main():
     await dp.start_polling(bot)
 
 # ================= СТАРТ =================
+# ИСПРАВЛЕНО: добавлен state: FSMContext
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="🚀 Начать", callback_data="go_main_menu")]
     ])
-    await message.answer("Привет! Я твой умный финансовый трекер.", reply_markup=kb)
+    await message.answer("Привет! Я твой финансовый трекер. Нажми 'Начать'.", reply_markup=kb)
 
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
@@ -129,24 +129,30 @@ async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data == "add_debt_btn")
 async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
     await state.set_state(DebtForm.title)
-    await callback.message.answer("Введи название долга (например, 'Другу Васе'):", reply_markup=back_menu())
+    await callback.message.answer("Введи название долга:", reply_markup=back_menu())
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("pay_debt_"))
 async def pay_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect('finance.db')
-    cursor = conn.cursor()
-    cursor.execute("UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
-    conn.commit()
-    conn.close()
-    await callback.message.edit_text(f"{callback.message.text}\n\n✅ *Долг закрыт!*", parse_mode="Markdown", reply_markup=None)
-    await callback.answer("Долг погашен.")
+    try:
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
+        conn.commit()
+        conn.close()
+        
+        new_text = f"{callback.message.text}\n\n✅ Долг закрыт!"
+        await callback.message.edit_text(new_text, reply_markup=None)
+        await callback.answer("Долг погашен.")
+    except Exception as e:
+        await callback.answer("Ошибка при обновлении.")
+        print(f"Ошибка pay_debt: {e}")
 
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM debts WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
     conn.commit()
@@ -165,13 +171,13 @@ async def deposit_goal_start(callback: types.CallbackQuery, state: FSMContext):
     goal_id = int(callback.data.split("_")[2])
     await state.update_data(goal_id=goal_id)
     await state.set_state(DepositForm.amount)
-    await callback.message.answer("Введи сумму, которую хочешь отложить на эту цель:", reply_markup=back_menu())
+    await callback.message.answer("Введи сумму пополнения:", reply_markup=back_menu())
     await callback.answer()
 
 @dp.callback_query(F.data.startswith("del_goal_"))
 async def delete_goal(callback: types.CallbackQuery):
     goal_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM goals WHERE id = ? AND user_id = ?", (goal_id, callback.from_user.id))
     conn.commit()
@@ -188,7 +194,7 @@ async def add_saving_start(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.startswith("del_sav_"))
 async def delete_saving(callback: types.CallbackQuery):
     sav_id = int(callback.data.split("_")[2])
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("DELETE FROM savings WHERE id = ? AND user_id = ?", (sav_id, callback.from_user.id))
     conn.commit()
@@ -200,7 +206,7 @@ async def delete_saving(callback: types.CallbackQuery):
 
 @dp.message(F.text == "📊 Статистика")
 async def show_stats(message: types.Message):
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,))
     total_debts = cursor.fetchone()[0] or 0
@@ -212,17 +218,18 @@ async def show_stats(message: types.Message):
     total_savings = cursor.fetchone()[0] or 0
     conn.close()
 
+    # Убран Markdown для надежности
     text = (
-        f"📊 *Твоя финансовая сводка:*\n\n"
-        f"🔴 *Активные долги:* {total_debts} руб.\n"
-        f"🎯 *Цели:* Накоплено {total_goals_saved} из {total_goals_price} руб.\n"
-        f"🏦 *Свободные сбережения:* {total_savings} руб.\n"
+        f"📊 Твоя финансовая сводка:\n\n"
+        f"🔴 Активные долги: {total_debts} руб.\n"
+        f"🎯 Цели: Накоплено {total_goals_saved} из {total_goals_price} руб.\n"
+        f"🏦 Свободные сбережения: {total_savings} руб.\n"
     )
-    await message.answer(text, parse_mode="Markdown")
+    await message.answer(text)
 
 @dp.message(F.text == "💰 Долги")
 async def show_debts(message: types.Message):
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (message.from_user.id,))
     debts = cursor.fetchall()
@@ -248,7 +255,7 @@ async def show_debts(message: types.Message):
 
 @dp.message(F.text == "🎯 Цели")
 async def show_goals(message: types.Message):
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (message.from_user.id,))
     goals = cursor.fetchall()
@@ -274,7 +281,7 @@ async def show_goals(message: types.Message):
 
 @dp.message(F.text == "🏦 Сбережения")
 async def show_savings(message: types.Message):
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("SELECT id, amount, source, date FROM savings WHERE user_id = ?", (message.from_user.id,))
     savings = cursor.fetchall()
@@ -315,28 +322,22 @@ async def add_debt_kind(message: types.Message, state: FSMContext):
         return await message.answer("Отменено.", reply_markup=main_menu())
     clean_kind = message.text.strip().lower()
     if clean_kind not in ["мелкие", "кредиты"]:
-        return await message.answer("Пожалуйста, нажми на кнопку 'Мелкие' или 'Кредиты' снизу.")
+        return await message.answer("Нажми кнопку 'Мелкие' или 'Кредиты' снизу.")
     await state.update_data(kind=message.text.strip())
-    await message.answer("Введи сумму долга (только цифры):", reply_markup=back_menu())
+    await message.answer("Введи сумму долга:", reply_markup=back_menu())
     await state.set_state(DebtForm.amount)
 
-# --- ИСПРАВЛЕННЫЙ ВВОД СУММЫ ---
 @dp.message(DebtForm.amount)
 async def add_debt_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    
-    # Ищем все цифры и точки в сообщении
-    clean_text = message.text.replace(',', '.').strip()
-    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
-    
+    match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match:
-        return await message.answer("Ошибка! Введи число (например: 5000 или 1500.50)")
-    
+        return await message.answer("Ошибка! Введи число.")
     amount = float(match.group(1))
     await state.update_data(amount=amount)
-    await message.answer("Введи срок в формате ГГГГ-ММ-ДД (например, 2026-12-31):", reply_markup=back_menu())
+    await message.answer("Введи срок (ГГГГ-ММ-ДД):", reply_markup=back_menu())
     await state.set_state(DebtForm.date)
 
 @dp.message(DebtForm.date)
@@ -348,17 +349,21 @@ async def add_debt_date(message: types.Message, state: FSMContext):
     try:
         datetime.strptime(clean_date, '%Y-%m-%d')
     except ValueError:
-        return await message.answer("Ошибка! Введи дату строго как 2026-12-31")
+        return await message.answer("Ошибка! Введи дату как 2026-12-31")
     
-    data = await state.get_data()
-    conn = sqlite3.connect('finance.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
-                   (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
-    conn.commit()
-    conn.close()
-    await state.clear()
-    await message.answer("Долг сохранен!", reply_markup=main_menu())
+    try:
+        data = await state.get_data()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)",
+                       (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
+        conn.commit()
+        conn.close()
+        await state.clear()
+        await message.answer("Долг сохранен!", reply_markup=main_menu())
+    except Exception as e:
+        await message.answer(f"⚠️ Ошибка БД: {e}", reply_markup=main_menu())
+        await state.clear()
 
 @dp.message(GoalForm.title)
 async def add_goal_title(message: types.Message, state: FSMContext):
@@ -366,7 +371,7 @@ async def add_goal_title(message: types.Message, state: FSMContext):
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
     await state.update_data(title=message.text)
-    await message.answer("Введи цену цели (цифры):", reply_markup=back_menu())
+    await message.answer("Введи цену цели:", reply_markup=back_menu())
     await state.set_state(GoalForm.price)
 
 @dp.message(GoalForm.price)
@@ -374,8 +379,7 @@ async def add_goal_price(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').strip()
-    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match:
         return await message.answer("Ошибка! Введи число.")
     price = float(match.group(1))
@@ -393,49 +397,51 @@ async def add_goal_date(message: types.Message, state: FSMContext):
         datetime.strptime(clean_date, '%Y-%m-%d')
     except ValueError:
         return await message.answer("Ошибка! Введи дату как 2026-12-31")
-    data = await state.get_data()
-    conn = sqlite3.connect('finance.db')
-    cursor = conn.cursor()
-    cursor.execute("INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)",
-                   (message.from_user.id, data['title'], data['price'], clean_date))
-    conn.commit()
-    conn.close()
-    await state.clear()
-    await message.answer("Цель сохранена!", reply_markup=main_menu())
+    try:
+        data = await state.get_data()
+        conn = sqlite3.connect(DB_NAME)
+        cursor = conn.cursor()
+        cursor.execute("INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)",
+                       (message.from_user.id, data['title'], data['price'], clean_date))
+        conn.commit()
+        conn.close()
+        await state.clear()
+        await message.answer("Цель сохранена!", reply_markup=main_menu())
+    except Exception as e:
+        await message.answer(f"⚠️ Ошибка БД: {e}", reply_markup=main_menu())
+        await state.clear()
 
 @dp.message(DepositForm.amount)
 async def deposit_goal_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').strip()
-    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match:
         return await message.answer("Ошибка! Введи число.")
     amount = float(match.group(1))
     
     data = await state.get_data()
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
     conn.commit()
     conn.close()
     await state.clear()
-    await message.answer(f"Отлично! Ты добавил {amount} руб. к цели.", reply_markup=main_menu())
+    await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
 
 @dp.message(SavingForm.amount)
 async def add_saving_amount(message: types.Message, state: FSMContext):
     if message.text == "Отмена":
         await state.clear()
         return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_text = message.text.replace(',', '.').strip()
-    match = re.search(r'(\d+(?:\.\d+)?)', clean_text)
+    match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match:
         return await message.answer("Ошибка! Введи число.")
     amount = float(match.group(1))
     
     await state.update_data(amount=amount)
-    await message.answer("Введи источник (например, 'Зарплата'):", reply_markup=back_menu())
+    await message.answer("Введи источник:", reply_markup=back_menu())
     await state.set_state(SavingForm.source)
 
 @dp.message(SavingForm.source)
@@ -445,7 +451,7 @@ async def add_saving_source(message: types.Message, state: FSMContext):
         return await message.answer("Отменено.", reply_markup=main_menu())
     data = await state.get_data()
     now = datetime.now().strftime("%Y-%m-%d")
-    conn = sqlite3.connect('finance.db')
+    conn = sqlite3.connect(DB_NAME)
     cursor = conn.cursor()
     cursor.execute("INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)",
                    (message.from_user.id, data['amount'], message.text, now))
