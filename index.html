@@ -157,25 +157,21 @@
 <body>
     <h2 id="greet">Мои деньги</h2>
 
-    <!-- Вкладка Долги -->
     <div id="tab-debts" class="tab active">
         <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
         <div id="list-debts"></div>
     </div>
 
-    <!-- Вкладка Цели -->
     <div id="tab-goals" class="tab">
         <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
         <div id="list-goals"></div>
     </div>
 
-    <!-- Вкладка Сбережения -->
     <div id="tab-savings" class="tab">
         <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
         <div id="list-savings"></div>
     </div>
 
-    <!-- Вкладка Статистика -->
     <div id="tab-stats" class="tab">
         <div class="stat-box" style="border-left-color: #ff3b30;">
             <div class="stat-title">🔴 Общая сумма долгов</div>
@@ -191,7 +187,6 @@
         </div>
     </div>
 
-    <!-- Меню навигации -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('debts', this)"><div class="nav-icon">💳</div><div>Долги</div></div>
         <div class="nav-item" onclick="switchTab('goals', this)"><div class="nav-icon">🎯</div><div>Цели</div></div>
@@ -199,7 +194,6 @@
         <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Статистика</div></div>
     </div>
 
-    <!-- Модальное окно добавления -->
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
@@ -214,7 +208,6 @@
         <button class="btn-cancel" onclick="hideForm()">Отмена</button>
     </div>
 
-    <!-- Окно пополнения цели -->
     <div id="deposit-form" class="modal">
         <h3>Пополнить цель</h3>
         <input type="number" id="dep-amount" placeholder="На какую сумму пополнить?">
@@ -222,7 +215,6 @@
         <button class="btn-cancel" onclick="document.getElementById('deposit-form').style.display = 'none'">Отмена</button>
     </div>
 
-    <!-- Окно внесения платежа по долгу -->
     <div id="pay-debt-form" class="modal">
         <h3>Внести платеж</h3>
         <input type="number" id="pay-debt-amount" placeholder="Сколько вы выплатили?">
@@ -230,7 +222,6 @@
         <button class="btn-cancel" onclick="document.getElementById('pay-debt-form').style.display = 'none'">Отмена</button>
     </div>
 
-    <!-- Календарь -->
     <div id="calendar-overlay">
         <div id="calendar-box">
             <div class="cal-header">
@@ -255,7 +246,6 @@
         const STORAGE_KEY = 'myFinance_' + userId;
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [] };
         
-        // Миграция для старых долгов
         data.debts.forEach(d => { if(d.paid === undefined) d.paid = 0; });
 
         let currentGoalIndex = -1;
@@ -318,7 +308,6 @@
         }
 
         function render() {
-            // --- ОТРИСОВКА ДОЛГОВ ---
             const lDebts = document.getElementById('list-debts');
             lDebts.innerHTML = data.debts.length ? '' : '<p style="text-align:center; color:#fff; margin-top:20px; text-shadow:0 1px 3px #000;">Нет долгов</p>';
             
@@ -352,7 +341,6 @@
                 }
             });
 
-            // --- ОТРИСОВКА ЦЕЛЕЙ ---
             const lGoals = document.getElementById('list-goals');
             lGoals.innerHTML = data.goals.length ? '' : '<p style="text-align:center; color:#555; margin-top:20px;">Нет целей</p>';
             data.goals.forEach((item, i) => {
@@ -374,7 +362,6 @@
                 </div>`;
             });
 
-            // --- ОТРИСОВКА СБЕРЕЖЕНИЙ ---
             const lSavings = document.getElementById('list-savings');
             lSavings.innerHTML = data.savings.length ? '' : '<p style="text-align:center; color:#555; margin-top:20px;">Нет сбережений</p>';
             data.savings.forEach((item, i) => {
@@ -383,7 +370,6 @@
                     <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div></div>`;
             });
 
-            // --- СТАТИСТИКА ---
             const totalDebts = data.debts.reduce((sum, item) => {
                 const left = item.amount - (item.paid || 0);
                 return sum + (left > 0 ? left : 0);
@@ -408,11 +394,9 @@
             document.getElementById('in-type').value = type;
             document.getElementById('form-title').innerText = type === 'debts' ? 'Новый долг' : (type === 'goals' ? 'Новая цель' : 'Новое сбережение');
             
-            // Показываем поле "Уже накоплено/выплачено" только для целей и долгов
             document.getElementById('in-saved').style.display = (type === 'goals' || type === 'debts') ? 'block' : 'none';
             document.getElementById('in-saved').placeholder = type === 'debts' ? 'Уже выплачено (если есть)' : 'Уже накоплено';
             
-            // Скрываем календарь для сбережений
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
             selectedDate = new Date();
@@ -424,7 +408,6 @@
             document.getElementById('in-date').value = formatted;
             document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
 
-            // Открываем модальное окно
             document.getElementById('form').style.display = 'flex';
         }
 
@@ -457,7 +440,6 @@
             hideForm();
         }
 
-        // --- ФУНКЦИИ ЦЕЛЕЙ ---
         function openDeposit(index) {
             currentGoalIndex = index;
             document.getElementById('dep-amount').value = '';
@@ -474,7 +456,6 @@
             document.getElementById('deposit-form').style.display = 'none';
         }
 
-        // --- ФУНКЦИИ ДОЛГОВ ---
         function openPayDebt(index) {
             currentDebtIndex = index;
             document.getElementById('pay-debt-amount').value = '';
