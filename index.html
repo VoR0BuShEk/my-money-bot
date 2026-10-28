@@ -15,9 +15,10 @@
         .card-sub { font-size: 14px; color: var(--hint); margin-top: 4px; }
         .amount { font-weight: bold; font-size: 18px; color: #e53935; }
         .amount-green { color: #43a047; }
+        .btn-action { background: none; border: none; color: var(--btn); font-size: 20px; cursor: pointer; padding: 5px; font-weight: bold; }
         .btn-del { background: none; border: none; color: #ff5252; font-size: 18px; cursor: pointer; padding: 5px; }
         .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background: var(--bg); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--sec-bg); }
-        .nav-item { text-align: center; font-size: 12px; color: var(--hint); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 33%; }
+        .nav-item { text-align: center; font-size: 11px; color: var(--hint); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; }
         .nav-item.active { color: var(--btn); }
         .nav-icon { font-size: 20px; }
         .btn-add { background: var(--btn); color: var(--btn-text); border: none; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold; }
@@ -26,55 +27,100 @@
         #form button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; }
         .btn-save { background: var(--btn); color: var(--btn-text); }
         .btn-cancel { background: #ff5252; color: white; }
+        
+        /* Стили для прогресс-бара */
+        .progress-bg { background: var(--bg); height: 8px; border-radius: 4px; margin-top: 8px; overflow: hidden; width: 100%; }
+        .progress-bar { background: #43a047; height: 100%; border-radius: 4px; }
+        
+        /* Стили для статистики */
+        .stat-box { background: var(--sec-bg); padding: 20px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
+        .stat-title { font-size: 14px; color: var(--hint); margin-bottom: 8px; }
+        .stat-value { font-size: 28px; font-weight: bold; }
     </style>
 </head>
 <body>
     <h2 id="greet">Загрузка...</h2>
-    <button class="btn-add" onclick="showForm()">➕ Добавить запись</button>
 
-    <div id="tab-debts" class="tab active"><div id="list-debts"></div></div>
-    <div id="tab-goals" class="tab"><div id="list-goals"></div></div>
-    <div id="tab-savings" class="tab"><div id="list-savings"></div></div>
+    <!-- Вкладка Долги -->
+    <div id="tab-debts" class="tab active">
+        <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
+        <div id="list-debts"></div>
+    </div>
 
+    <!-- Вкладка Цели -->
+    <div id="tab-goals" class="tab">
+        <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
+        <div id="list-goals"></div>
+    </div>
+
+    <!-- Вкладка Сбережения -->
+    <div id="tab-savings" class="tab">
+        <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
+        <div id="list-savings"></div>
+    </div>
+
+    <!-- Вкладка Статистика -->
+    <div id="tab-stats" class="tab">
+        <div class="stat-box">
+            <div class="stat-title">🔴 Общая сумма долгов</div>
+            <div class="stat-value" id="stat-debts" style="color: #e53935;">0 ₽</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-title">🎯 Накоплено на цели</div>
+            <div class="stat-value" id="stat-goals" style="color: #43a047;">0 ₽</div>
+        </div>
+        <div class="stat-box">
+            <div class="stat-title">🏦 Свободные сбережения</div>
+            <div class="stat-value" id="stat-savings" style="color: var(--btn);">0 ₽</div>
+        </div>
+    </div>
+
+    <!-- Меню навигации -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('debts', this)"><div class="nav-icon">💳</div><div>Долги</div></div>
         <div class="nav-item" onclick="switchTab('goals', this)"><div class="nav-icon">🎯</div><div>Цели</div></div>
         <div class="nav-item" onclick="switchTab('savings', this)"><div class="nav-icon">🏦</div><div>Сбережения</div></div>
+        <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Статистика</div></div>
     </div>
 
+    <!-- Модальное окно добавления -->
     <div id="form">
-        <h3>Новая запись</h3>
+        <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
-        <input type="number" id="in-amount" placeholder="Сумма">
-        <select id="in-type">
-            <option value="debts">Долг</option>
-            <option value="goals">Цель</option>
-            <option value="savings">Сбережение</option>
-        </select>
+        <input type="number" id="in-amount" placeholder="Сумма / Цель">
+        <input type="number" id="in-saved" placeholder="Уже накоплено (для целей)" style="display:none;">
+        <input type="hidden" id="in-type">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="hideForm()">Отмена</button>
+    </div>
+
+    <!-- Модальное окно пополнения -->
+    <div id="deposit-form" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); padding: 20px; z-index: 100; flex-direction: column; justify-content: center;">
+        <h3>Пополнить цель</h3>
+        <input type="number" id="dep-amount" placeholder="На какую сумму пополнить?" style="padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; border: 1px solid var(--hint); border-radius: 8px; background: var(--sec-bg); color: var(--text);">
+        <button class="btn-save" onclick="depositGoal()">Пополнить</button>
+        <button class="btn-cancel" onclick="document.getElementById('deposit-form').style.display = 'none'">Отмена</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
         tg.ready(); tg.expand();
         
-        // Получаем ID пользователя. Если его нет, ставим 'guest'
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
-        
         if (tg.initDataUnsafe?.user) {
             document.getElementById('greet').innerText = `Привет, ${tg.initDataUnsafe.user.first_name}!`;
         } else {
             document.getElementById('greet').innerText = `Мои деньги`;
         }
 
-        // Ключ хранилища уникален для каждого пользователя
         const STORAGE_KEY = 'myFinance_' + userId;
-
-        // Загружаем данные именно этого пользователя
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [] };
 
+        // Переменная для хранения индекса цели, которую мы пополняем
+        let currentGoalIndex = -1;
+
         function render() {
+            // --- ДОЛГИ ---
             const lDebts = document.getElementById('list-debts');
             lDebts.innerHTML = data.debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
             data.debts.forEach((item, i) => {
@@ -83,14 +129,29 @@
                     <button class="btn-del" onclick="del('debts', ${i})">🗑</button></div></div>`;
             });
 
+            // --- ЦЕЛИ ---
             const lGoals = document.getElementById('list-goals');
             lGoals.innerHTML = data.goals.length ? '' : '<p style="text-align:center; color:gray;">Нет целей</p>';
             data.goals.forEach((item, i) => {
-                lGoals.innerHTML += `<div class="card"><div><div class="card-title">${item.title}</div><div class="card-sub">Цель</div></div>
-                    <div style="display:flex; gap:10px; align-items:center;"><div class="amount amount-green">${item.amount} ₽</div>
-                    <button class="btn-del" onclick="del('goals', ${i})">🗑</button></div></div>`;
+                const saved = item.saved || 0;
+                const percent = Math.min(Math.round((saved / item.amount) * 100), 100);
+                lGoals.innerHTML += `<div class="card" style="flex-direction: column; align-items: stretch;">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                        <div><div class="card-title">${item.title}</div><div class="card-sub">Цель: ${item.amount} ₽</div></div>
+                        <div style="text-align:right;">
+                            <div class="amount amount-green" style="font-size: 16px;">${saved} ₽</div>
+                            <div class="card-sub">${percent}%</div>
+                        </div>
+                    </div>
+                    <div class="progress-bg"><div class="progress-bar" style="width: ${percent}%;"></div></div>
+                    <div style="display:flex; justify-content:flex-end; gap:10px; margin-top:10px;">
+                        <button class="btn-action" onclick="openDeposit(${i})">➕ Пополнить</button>
+                        <button class="btn-del" onclick="del('goals', ${i})">🗑</button>
+                    </div>
+                </div>`;
             });
 
+            // --- СБЕРЕЖЕНИЯ ---
             const lSavings = document.getElementById('list-savings');
             lSavings.innerHTML = data.savings.length ? '' : '<p style="text-align:center; color:gray;">Нет сбережений</p>';
             data.savings.forEach((item, i) => {
@@ -98,6 +159,15 @@
                     <div style="display:flex; gap:10px; align-items:center;"><div class="amount amount-green">+ ${item.amount} ₽</div>
                     <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div></div>`;
             });
+
+            // --- СТАТИСТИКА ---
+            const totalDebts = data.debts.reduce((sum, item) => sum + item.amount, 0);
+            const totalSaved = data.goals.reduce((sum, item) => sum + (item.saved || 0), 0);
+            const totalSavings = data.savings.reduce((sum, item) => sum + item.amount, 0);
+
+            document.getElementById('stat-debts').innerText = `${totalDebts} ₽`;
+            document.getElementById('stat-goals').innerText = `${totalSaved} ₽`;
+            document.getElementById('stat-savings').innerText = `${totalSavings} ₽`;
         }
 
         function switchTab(id, el) {
@@ -107,28 +177,60 @@
             el.classList.add('active');
         }
 
-        function showForm() { document.getElementById('form').style.display = 'flex'; }
-        function hideForm() { document.getElementById('form').style.display = 'none'; }
+        // --- ДОБАВЛЕНИЕ ЗАПИСИ ---
+        function showForm(type) {
+            document.getElementById('in-type').value = type;
+            document.getElementById('form-title').innerText = type === 'debts' ? 'Новый долг' : (type === 'goals' ? 'Новая цель' : 'Новое сбережение');
+            
+            // Показываем поле "уже накоплено" только для целей
+            document.getElementById('in-saved').style.display = type === 'goals' ? 'block' : 'none';
+            
+            document.getElementById('form').style.display = 'flex';
+        }
+
+        function hideForm() { 
+            document.getElementById('form').style.display = 'none'; 
+            document.getElementById('in-title').value = '';
+            document.getElementById('in-amount').value = '';
+            document.getElementById('in-saved').value = '';
+        }
 
         function saveItem() {
-            const title = document.getElementById('in-title').value;
-            const amount = document.getElementById('in-amount').value;
             const type = document.getElementById('in-type').value;
+            const title = document.getElementById('in-title').value;
+            const amount = parseFloat(document.getElementById('in-amount').value);
+            const saved = type === 'goals' ? parseFloat(document.getElementById('in-saved').value || 0) : 0;
 
-            if (!title || !amount) { tg.showAlert("Заполните все поля!"); return; }
+            if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
-            // Сохраняем в личное хранилище пользователя
-            data[type].push({ title: title, amount: parseFloat(amount) });
+            data[type].push({ title: title, amount: amount, saved: saved });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             
             render();
             hideForm();
-            document.getElementById('in-title').value = '';
-            document.getElementById('in-amount').value = '';
 
-            // Отправляем в бота
+            // Уведомляем бота
             const actionMap = { debts: 'add_debt', goals: 'add_goal', savings: 'add_saving' };
-            tg.sendData(JSON.stringify({ action: actionMap[type], title: title, amount: parseFloat(amount) }));
+            tg.sendData(JSON.stringify({ action: actionMap[type], title: title, amount: amount }));
+        }
+
+        // --- ПОПОЛНЕНИЕ ЦЕЛИ ---
+        function openDeposit(index) {
+            currentGoalIndex = index;
+            document.getElementById('dep-amount').value = '';
+            document.getElementById('deposit-form').style.display = 'flex';
+        }
+
+        function depositGoal() {
+            const amount = parseFloat(document.getElementById('dep-amount').value);
+            if (isNaN(amount) || amount <= 0) { tg.showAlert("Введите корректную сумму"); return; }
+            
+            // Прибавляем к накоплениям
+            data.goals[currentGoalIndex].saved = (data.goals[currentGoalIndex].saved || 0) + amount;
+            
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            render();
+            document.getElementById('deposit-form').style.display = 'none';
         }
 
         function del(type, index) {
@@ -139,6 +241,7 @@
             }
         }
 
+        // Запускаем отрисовку при старте
         render();
     </script>
 </body>
