@@ -18,30 +18,65 @@
             background: var(--bg); 
             color: var(--text); 
             margin: 0; 
-            padding: 16px; 
+            padding: 0; 
             padding-bottom: 90px; 
         }
 
-        h2 { margin-top: 0; font-size: 24px; text-align: center; margin-bottom: 20px; }
+        h2 { 
+            margin: 0; 
+            padding: 20px 16px 10px 16px; 
+            font-size: 24px; 
+            text-align: center; 
+            color: #fff; 
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8); 
+        }
 
         .tab { display: none; } 
         .tab.active { display: block; }
 
-        /* ИСПРАВЛЕНИЕ: Добавляем z-index для контента, чтобы он был поверх фона */
-        .tab > * {
+        /* Слой для контента (кнопки и карточки) */
+        .tab-content {
             position: relative;
-            z-index: 2;
+            z-index: 2; /* Контент всегда поверх фона */
+            padding: 16px;
+            min-height: calc(100vh - 150px);
+        }
+
+        /* Слой для фоновой картинки */
+        .bg-layer {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            z-index: 1; /* Фон под контентом */
+            background-size: cover;
+            background-position: center;
+            background-attachment: fixed;
+            pointer-events: none; /* Клики проходят сквозь фон к кнопкам */
+        }
+
+        /* Картинки для фонов */
+        #tab-debts .bg-layer {
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/debts-bg.jpg'); 
+        }
+        #tab-goals .bg-layer {
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/goals-bg.jpg'); 
+        }
+        #tab-savings .bg-layer {
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/savings-bg.jpg'); 
+        }
+        #tab-stats .bg-layer {
+            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/stats-bg.jpg'); 
         }
 
         .card { 
-            background: var(--card-bg); 
+            background: rgba(255, 255, 255, 0.95); /* Полупрозрачный белый фон */
+            backdrop-filter: blur(5px);
             border-radius: 12px; 
             padding: 16px; 
             margin-bottom: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
-        .card-title { font-weight: bold; font-size: 16px; }
+        .card-title { font-weight: bold; font-size: 16px; color: #1c1c1e; }
         .card-sub { font-size: 13px; color: #666; margin-top: 4px; }
         
         .amount { font-weight: bold; color: #ff3b30; }
@@ -66,9 +101,8 @@
         .btn-add { 
             background: var(--btn);
             color: white; border: none; padding: 12px; border-radius: 10px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold;
-            /* ИСПРАВЛЕНИЕ: Кнопка точно будет кликабельной */
             position: relative; 
-            z-index: 3;
+            z-index: 10;
         }
 
         .modal { 
@@ -93,8 +127,10 @@
         .progress-bar { background: #34c759; height: 100%; border-radius: 4px; }
 
         .stat-box { 
-            background: #fff; padding: 20px; border-radius: 12px; margin-bottom: 12px; text-align: center; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            background: rgba(255,255,255,0.95); 
+            backdrop-filter: blur(5px);
+            padding: 20px; border-radius: 12px; margin-bottom: 12px; text-align: center; 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
         .stat-title { font-size: 14px; color: #666; margin-bottom: 5px; }
         .stat-value { font-size: 24px; font-weight: bold; }
@@ -115,41 +151,6 @@
         .cal-day.selected { background: var(--btn); color: white; font-weight: bold; }
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
-
-        /* ФОНЫ ДЛЯ ВКЛАДОК */
-        
-        #tab-debts {
-            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/debts-bg.jpg'); 
-            background-size: cover; background-position: center; background-attachment: fixed;
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
-        }
-
-        #tab-goals {
-            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/goals-bg.jpg'); 
-            background-size: cover; background-position: center; background-attachment: fixed;
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
-        }
-
-        #tab-savings {
-            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/savings-bg.jpg'); 
-            background-size: cover; background-position: center; background-attachment: fixed;
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
-        }
-
-        #tab-stats {
-            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/stats-bg.jpg'); 
-            background-size: cover; background-position: center; background-attachment: fixed;
-            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
-        }
-
-        #tab-debts h2, #tab-goals h2, #tab-savings h2, #tab-stats h2 {
-            color: #fff;
-            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
-        }
     </style>
 </head>
 <body>
@@ -157,35 +158,47 @@
 
     <!-- Вкладка Долги -->
     <div id="tab-debts" class="tab active">
-        <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
-        <div id="list-debts"></div>
+        <div class="bg-layer"></div>
+        <div class="tab-content">
+            <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
+            <div id="list-debts"></div>
+        </div>
     </div>
 
     <!-- Вкладка Цели -->
     <div id="tab-goals" class="tab">
-        <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
-        <div id="list-goals"></div>
+        <div class="bg-layer"></div>
+        <div class="tab-content">
+            <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
+            <div id="list-goals"></div>
+        </div>
     </div>
 
     <!-- Вкладка Сбережения -->
     <div id="tab-savings" class="tab">
-        <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
-        <div id="list-savings"></div>
+        <div class="bg-layer"></div>
+        <div class="tab-content">
+            <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
+            <div id="list-savings"></div>
+        </div>
     </div>
 
     <!-- Вкладка Статистика -->
     <div id="tab-stats" class="tab">
-        <div class="stat-box" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
-            <div class="stat-title">🔴 Общая сумма долгов</div>
-            <div class="stat-value" id="stat-debts" style="color: #ff3b30;">0 ₽</div>
-        </div>
-        <div class="stat-box" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
-            <div class="stat-title">🎯 Накоплено на цели</div>
-            <div class="stat-value" id="stat-goals" style="color: #34c759;">0 ₽</div>
-        </div>
-        <div class="stat-box" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
-            <div class="stat-title">🏦 Свободные сбережения</div>
-            <div class="stat-value" id="stat-savings" style="color: #007aff;">0 ₽</div>
+        <div class="bg-layer"></div>
+        <div class="tab-content">
+            <div class="stat-box">
+                <div class="stat-title">🔴 Общая сумма долгов</div>
+                <div class="stat-value" id="stat-debts" style="color: #ff3b30;">0 ₽</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">🎯 Накоплено на цели</div>
+                <div class="stat-value" id="stat-goals" style="color: #34c759;">0 ₽</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-title">🏦 Свободные сбережения</div>
+                <div class="stat-value" id="stat-savings" style="color: #007aff;">0 ₽</div>
+            </div>
         </div>
     </div>
 
@@ -307,7 +320,7 @@
                 const left = item.amount - (item.paid || 0);
                 const percent = Math.min(Math.round(((item.paid || 0) / item.amount) * 100), 100);
                 document.getElementById('list-debts').innerHTML += `
-                <div class="card" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
+                <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
                         <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
@@ -328,7 +341,7 @@
             data.goals.forEach((item, i) => {
                 const percent = Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100);
                 document.getElementById('list-goals').innerHTML += `
-                <div class="card" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
+                <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
                         <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
@@ -348,7 +361,7 @@
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
-                <div class="card" style="display:flex; justify-content:space-between; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
+                <div class="card" style="display:flex; justify-content:space-between;">
                     <div class="card-title">${item.title}</div>
                     <div><span class="amount-green">+ ${item.amount} ₽</span> <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div>
                 </div>`;
