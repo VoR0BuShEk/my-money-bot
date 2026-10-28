@@ -146,7 +146,7 @@ async def start(message: types.Message, state: FSMContext):
     await state.clear()
     
     # ВАША ССЫЛКА НА GITHUB PAGES ВСТАВЛЯЕТСЯ СЮДА:
-    my_app_url = "https://ВАШ_ЛОГИН.github.io/НАЗВАНИЕ_РЕПОЗИТОРИЯ/"
+    my_app_url = "https://vor0bushek.github.io/my-money-bot/"
     
     kb = ReplyKeyboardMarkup(
         keyboard=[
