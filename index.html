@@ -11,7 +11,7 @@
             --hint: var(--tg-theme-hint-color, #8e8e93); 
             --btn: var(--tg-theme-button-color, #007aff); 
             --btn-text: var(--tg-theme-button-text-color, #ffffff); 
-            --card-bg: rgba(255, 255, 255, 0.85); 
+            --card-bg: rgba(255, 255, 255, 0.95); 
         }
 
         body { 
@@ -32,7 +32,6 @@
 
         .tab { display: none; } .tab.active { display: block; }
 
-        /* Фоны вкладок */
         #tab-debts {
             background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('debts-bg.jpg'); 
             background-size: cover; background-position: center; background-attachment: fixed;
@@ -62,7 +61,7 @@
             background: var(--card-bg); backdrop-filter: blur(10px);
             border-radius: 16px; padding: 16px; margin-bottom: 12px; 
             display: flex; justify-content: space-between; align-items: center; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
 
         .card-title { font-weight: bold; font-size: 17px; color: #000; }
@@ -81,23 +80,22 @@
             padding: 12px 0 20px 0; 
             border-top-left-radius: 20px; border-top-right-radius: 20px;
             box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
-            border-top: 1px solid rgba(255, 255, 255, 0.4); z-index: 10;
+            z-index: 10;
         }
         
-        .nav-item { text-align: center; font-size: 11px; color: #555; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; transition: 0.2s; }
+        .nav-item { text-align: center; font-size: 11px; color: #555; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 25%; }
         .nav-item.active { color: var(--btn); font-weight: bold; }
         .nav-icon { font-size: 22px; }
 
         .btn-add { 
             background: linear-gradient(135deg, #007aff, #0056b3);
             color: white; border: none; padding: 14px; border-radius: 12px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold;
-            box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
         }
 
         /* МОДАЛЬНЫЕ ОКНА */
         .modal { 
             display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background: rgba(255,255,255,0.95); backdrop-filter: blur(20px);
+            background: rgba(255,255,255,0.98);
             padding: 20px; flex-direction: column; justify-content: center; overflow-y: auto; 
             z-index: 1000;
         }
@@ -123,7 +121,7 @@
         .stat-box { 
             background: var(--card-bg); backdrop-filter: blur(12px);
             padding: 24px; border-radius: 16px; margin-bottom: 16px; text-align: center; 
-            box-shadow: 0 8px 32px rgba(0,0,0,0.1); border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
             border-left: 6px solid var(--btn);
         }
         .stat-title { font-size: 15px; color: #666; margin-bottom: 8px; font-weight: 500; }
@@ -135,17 +133,15 @@
             cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
         }
         
-        #calendar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; backdrop-filter: blur(5px); }
-        #calendar-box { background: #fff; color: #000; padding: 20px; border-radius: 20px; width: 90%; max-width: 340px; box-shadow: 0 10px 30px rgba(0,0,0,0.2); }
+        #calendar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 10000; align-items: center; justify-content: center; }
+        #calendar-box { background: #fff; color: #000; padding: 20px; border-radius: 20px; width: 90%; max-width: 340px; }
         .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-weight: bold; font-size: 18px; }
         .cal-header button { background: #f2f2f7; border: none; color: var(--btn); font-size: 20px; cursor: pointer; padding: 5px 15px; border-radius: 10px; }
         .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
         .cal-day-name { font-size: 12px; color: #666; margin-bottom: 8px; font-weight: bold; }
-        .cal-day { padding: 10px 0; border-radius: 10px; cursor: pointer; font-size: 15px; transition: 0.2s; }
-        .cal-day:hover { background: #f2f2f7; }
+        .cal-day { padding: 10px 0; border-radius: 10px; cursor: pointer; font-size: 15px; }
         .cal-day.selected { background: var(--btn); color: white; font-weight: bold; }
         .cal-day.empty { cursor: default; }
-        .cal-day.empty:hover { background: none; }
         .cal-close { width: 100%; padding: 14px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 12px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
 
         #greet {
@@ -194,15 +190,14 @@
         <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Статистика</div></div>
     </div>
 
+    <!-- Формы -->
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма / Цель">
         <input type="number" id="in-saved" placeholder="Уже накоплено / выплачено" style="display:none;">
-        
         <div class="date-btn" id="date-btn" onclick="openCalendar()">Срок: не выбран <span>📅</span></div>
         <input type="hidden" id="in-date" value="">
-
         <input type="hidden" id="in-type">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="hideForm()">Отмена</button>
@@ -222,6 +217,7 @@
         <button class="btn-cancel" onclick="document.getElementById('pay-debt-form').style.display = 'none'">Отмена</button>
     </div>
 
+    <!-- Календарь -->
     <div id="calendar-overlay">
         <div id="calendar-box">
             <div class="cal-header">
@@ -250,24 +246,21 @@
 
         let currentGoalIndex = -1;
         let currentDebtIndex = -1;
-
         let currentDate = new Date();
         let selectedDate = null;
 
+        // Календарь
         function openCalendar() {
             document.getElementById('calendar-overlay').style.display = 'flex';
             renderCalendar();
         }
-
         function closeCalendar() {
             document.getElementById('calendar-overlay').style.display = 'none';
         }
-
         function changeMonth(offset) {
             currentDate.setMonth(currentDate.getMonth() + offset);
             renderCalendar();
         }
-
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -280,22 +273,18 @@
 
             const daysContainer = document.getElementById('cal-days');
             daysContainer.innerHTML = '';
-
             ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
                 daysContainer.innerHTML += `<div class="cal-day-name">${d}</div>`;
             });
-
             for (let i = 0; i < startOffset; i++) {
                 daysContainer.innerHTML += `<div class="cal-day empty"></div>`;
             }
-
             for (let i = 1; i <= daysInMonth; i++) {
                 const isSelected = selectedDate && selectedDate.getDate() === i && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
                 const cls = isSelected ? 'cal-day selected' : 'cal-day';
                 daysContainer.innerHTML += `<div class="${cls}" onclick="selectDate(${year}, ${month}, ${i})">${i}</div>`;
             }
         }
-
         function selectDate(year, month, day) {
             selectedDate = new Date(year, month, day);
             const dd = String(day).padStart(2, '0');
@@ -307,10 +296,10 @@
             closeCalendar();
         }
 
+        // Отрисовка
         function render() {
             const lDebts = document.getElementById('list-debts');
-            lDebts.innerHTML = data.debts.length ? '' : '<p style="text-align:center; color:#fff; margin-top:20px; text-shadow:0 1px 3px #000;">Нет долгов</p>';
-            
+            lDebts.innerHTML = data.debts.length ? '' : '<p style="text-align:center; color:#fff; margin-top:20px;">Нет долгов</p>';
             data.debts.forEach((item, i) => {
                 const paid = item.paid || 0;
                 const left = item.amount - paid;
@@ -375,12 +364,9 @@
                 return sum + (left > 0 ? left : 0);
             }, 0);
             
-            const totalSaved = data.goals.reduce((sum, item) => sum + (item.saved || 0), 0);
-            const totalSavings = data.savings.reduce((sum, item) => sum + item.amount, 0);
-
             document.getElementById('stat-debts').innerText = `${totalDebts} ₽`;
-            document.getElementById('stat-goals').innerText = `${totalSaved} ₽`;
-            document.getElementById('stat-savings').innerText = `${totalSavings} ₽`;
+            document.getElementById('stat-goals').innerText = `${data.goals.reduce((sum, item) => sum + (item.saved || 0), 0)} ₽`;
+            document.getElementById('stat-savings').innerText = `${data.savings.reduce((sum, item) => sum + item.amount, 0)} ₽`;
         }
 
         function switchTab(id, el) {
@@ -390,23 +376,21 @@
             el.classList.add('active');
         }
 
+        // Управление формами
         function showForm(type) {
             document.getElementById('in-type').value = type;
             document.getElementById('form-title').innerText = type === 'debts' ? 'Новый долг' : (type === 'goals' ? 'Новая цель' : 'Новое сбережение');
             
             document.getElementById('in-saved').style.display = (type === 'goals' || type === 'debts') ? 'block' : 'none';
             document.getElementById('in-saved').placeholder = type === 'debts' ? 'Уже выплачено (если есть)' : 'Уже накоплено';
-            
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
             selectedDate = new Date();
             const dd = String(selectedDate.getDate()).padStart(2, '0');
             const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
             const yyyy = selectedDate.getFullYear();
-            const formatted = `${dd}.${mm}.${yyyy}`;
-            
-            document.getElementById('in-date').value = formatted;
-            document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+            document.getElementById('in-date').value = `${dd}.${mm}.${yyyy}`;
+            document.getElementById('date-btn').innerHTML = `Срок: ${dd}.${mm}.${yyyy} <span>📅</span>`;
 
             document.getElementById('form').style.display = 'flex';
         }
@@ -427,13 +411,9 @@
 
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
-            if (type === 'debts') {
-                data.debts.push({ title: title, amount: amount, paid: initial, date: date });
-            } else if (type === 'goals') {
-                data.goals.push({ title: title, amount: amount, saved: initial, date: date });
-            } else {
-                data.savings.push({ title: title, amount: amount, date: date });
-            }
+            if (type === 'debts') data.debts.push({ title, amount, paid: initial, date });
+            else if (type === 'goals') data.goals.push({ title, amount, saved: initial, date });
+            else data.savings.push({ title, amount, date });
             
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render();
@@ -448,8 +428,7 @@
 
         function depositGoal() {
             const amount = parseFloat(document.getElementById('dep-amount').value);
-            if (isNaN(amount) || amount <= 0) { tg.showAlert("Введите корректную сумму"); return; }
-            
+            if (isNaN(amount) || amount <= 0) return;
             data.goals[currentGoalIndex].saved = (data.goals[currentGoalIndex].saved || 0) + amount;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render();
@@ -464,8 +443,7 @@
 
         function payDebt() {
             const amount = parseFloat(document.getElementById('pay-debt-amount').value);
-            if (isNaN(amount) || amount <= 0) { tg.showAlert("Введите корректную сумму"); return; }
-            
+            if (isNaN(amount) || amount <= 0) return;
             data.debts[currentDebtIndex].paid = (data.debts[currentDebtIndex].paid || 0) + amount;
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render();
