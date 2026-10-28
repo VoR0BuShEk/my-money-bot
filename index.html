@@ -107,14 +107,20 @@
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        /* ФОНЫ ДЛЯ ВКЛАДОК (С ПУТЯМИ К ПАПКЕ IMAGES) */
+        /* ФОНЫ ДЛЯ ВКЛАДОК */
         
         /* Фон для вкладки Долги */
         #tab-debts {
             background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/debts-bg.jpg'); 
-            background-size: cover; 
-            background-position: center; 
-            background-attachment: fixed;
+            background-size: cover; background-position: center; background-attachment: fixed;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
+        }
+
+        /* Фон для вкладки Цели */
+        #tab-goals {
+            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/goals-bg.jpg'); 
+            background-size: cover; background-position: center; background-attachment: fixed;
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
         }
@@ -122,15 +128,13 @@
         /* Фон для вкладки Сбережения */
         #tab-savings {
             background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/savings-bg.jpg'); 
-            background-size: cover; 
-            background-position: center; 
-            background-attachment: fixed;
+            background-size: cover; background-position: center; background-attachment: fixed;
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
             z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
         }
 
         /* Заголовок на темном фоне */
-        #tab-debts h2, #tab-savings h2 {
+        #tab-debts h2, #tab-goals h2, #tab-savings h2 {
             color: #fff;
             text-shadow: 0 2px 6px rgba(0,0,0,0.8);
         }
@@ -139,18 +143,19 @@
 <body>
     <h2>Мои деньги</h2>
 
-    <!-- Вкладка Долги с фоновой картинкой -->
+    <!-- Вкладка Долги -->
     <div id="tab-debts" class="tab active">
         <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
         <div id="list-debts"></div>
     </div>
 
+    <!-- Вкладка Цели -->
     <div id="tab-goals" class="tab">
         <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
         <div id="list-goals"></div>
     </div>
 
-    <!-- Вкладка Сбережения с фоновой картинкой -->
+    <!-- Вкладка Сбережения -->
     <div id="tab-savings" class="tab">
         <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
         <div id="list-savings"></div>
@@ -310,7 +315,7 @@
             data.goals.forEach((item, i) => {
                 const percent = Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100);
                 document.getElementById('list-goals').innerHTML += `
-                <div class="card">
+                <div class="card" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
                     <div style="display:flex; justify-content:space-between; width:100%;">
                         <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
