@@ -3,7 +3,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <!-- Официальный скрипт Telegram -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>Мой Финансовый Трекер</title>
     <style>
@@ -15,127 +14,58 @@
             --button-text-color: var(--tg-theme-button-text-color, #ffffff);
             --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
         }
-
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--bg-color);
-            color: var(--text-color);
-            margin: 0;
-            padding: 16px;
-            padding-bottom: 80px; /* Место для нижнего меню */
-        }
-
-        h2 {
-            margin-top: 0;
-            font-size: 24px;
-        }
-
-        /* Стили для вкладок */
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-
-        /* Карточки */
-        .card {
-            background-color: var(--secondary-bg);
-            border-radius: 12px;
-            padding: 16px;
-            margin-bottom: 12px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-        .card-title {
-            font-weight: bold;
-            font-size: 16px;
-        }
-        .card-subtitle {
-            font-size: 14px;
-            color: var(--hint-color);
-            margin-top: 4px;
-        }
-        .card-amount {
-            font-weight: bold;
-            font-size: 18px;
-            color: #e53935; /* Красный для долгов */
-        }
-        .goal-amount {
-            color: #43a047; /* Зеленый для целей */
-        }
-
-        /* Нижнее меню навигации */
-        .bottom-nav {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background-color: var(--bg-color);
-            display: flex;
-            justify-content: space-around;
-            padding: 12px 0;
-            border-top: 1px solid var(--secondary-bg);
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-        }
-        .nav-item {
-            text-align: center;
-            font-size: 12px;
-            color: var(--hint-color);
-            cursor: pointer;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 4px;
-            width: 33%;
-        }
-        .nav-item.active {
-            color: var(--button-color);
-        }
-        .nav-icon {
-            font-size: 20px;
-        }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 16px; padding-bottom: 80px; }
+        h2 { margin-top: 0; font-size: 24px; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .card { background-color: var(--secondary-bg); border-radius: 12px; padding: 16px; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-weight: bold; font-size: 16px; }
+        .card-subtitle { font-size: 14px; color: var(--hint-color); margin-top: 4px; }
+        .card-amount { font-weight: bold; font-size: 18px; color: #e53935; }
+        .goal-amount { color: #43a047; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--bg-color); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--secondary-bg); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .nav-item { text-align: center; font-size: 12px; color: var(--hint-color); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 33%; }
+        .nav-item.active { color: var(--button-color); }
+        .nav-icon { font-size: 20px; }
+        .btn-add { background: var(--button-color); color: var(--button-text-color); border: none; padding: 10px; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; }
+        #add-form { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color); padding: 20px; z-index: 100; flex-direction: column; justify-content: center; }
+        #add-form input, #add-form select { padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; border: 1px solid var(--hint-color); border-radius: 8px; background: var(--secondary-bg); color: var(--text-color); }
+        #add-form button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; }
+        .btn-save { background: var(--button-color); color: var(--button-text-color); }
+        .btn-cancel { background: #ff5252; color: white; }
     </style>
 </head>
 <body>
     <h2 id="greeting">Загрузка...</h2>
-    <button onclick="openAddForm()" style="margin-bottom: 20px;">➕ Добавить запись</button>
+    <button class="btn-add" onclick="openAddForm()">➕ Добавить запись</button>
 
-    <!-- Вкладка 1: Долги -->
+    <!-- Вкладка Долги -->
     <div id="tab-debts" class="tab-content active">
         <div class="card">
             <div>
-                <div class="card-title">Кредит на телефон</div>
+                <div class="card-title">Кредит на телефон (Пример)</div>
                 <div class="card-subtitle">Срок: 15.11.2026</div>
             </div>
             <div class="card-amount">15 000 ₽</div>
         </div>
-        <div class="card">
-            <div>
-                <div class="card-title">Другу Васе</div>
-                <div class="card-subtitle">Срок: завтра</div>
-            </div>
-            <div class="card-amount">5 000 ₽</div>
-        </div>
     </div>
 
-    <!-- Вкладка 2: Цели -->
+    <!-- Вкладка Цели -->
     <div id="tab-goals" class="tab-content">
         <div class="card">
             <div>
-                <div class="card-title">Отпуск на море 🌴</div>
+                <div class="card-title">Отпуск на море 🌴 (Пример)</div>
                 <div class="card-subtitle">Накоплено 30 000 из 100 000</div>
             </div>
             <div class="card-amount goal-amount">30%</div>
         </div>
     </div>
 
-    <!-- Вкладка 3: Сбережения -->
+    <!-- Вкладка Сбережения -->
     <div id="tab-savings" class="tab-content">
         <div class="card">
             <div>
-                <div class="card-title">Зарплата</div>
+                <div class="card-title">Зарплата (Пример)</div>
                 <div class="card-subtitle">01.10.2026</div>
             </div>
             <div class="card-amount goal-amount">+ 50 000 ₽</div>
@@ -145,63 +75,63 @@
     <!-- Нижнее меню -->
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('debts', this)">
-            <div class="nav-icon">💳</div>
-            <div>Долги</div>
+            <div class="nav-icon">💳</div><div>Долги</div>
         </div>
         <div class="nav-item" onclick="switchTab('goals', this)">
-            <div class="nav-icon">🎯</div>
-            <div>Цели</div>
+            <div class="nav-icon">🎯</div><div>Цели</div>
         </div>
         <div class="nav-item" onclick="switchTab('savings', this)">
-            <div class="nav-icon">🏦</div>
-            <div>Сбережения</div>
+            <div class="nav-icon">🏦</div><div>Сбережения</div>
         </div>
     </div>
 
+    <!-- Форма добавления -->
+    <div id="add-form">
+        <h3>Новая запись</h3>
+        <input type="text" id="input-title" placeholder="Название (например, 'Долг другу')">
+        <input type="number" id="input-amount" placeholder="Сумма (например, 5000)">
+        <select id="input-type">
+            <option value="add_debt">Долг</option>
+            <option value="add_goal">Цель</option>
+            <option value="add_saving">Сбережение</option>
+        </select>
+        <button class="btn-save" onclick="submitForm()">Сохранить</button>
+        <button class="btn-cancel" onclick="closeAddForm()">Отмена</button>
+    </div>
+
     <script>
-        // Инициализация Telegram Mini App
         const tg = window.Telegram.WebApp;
         tg.ready();
         tg.expand();
 
-        // Получаем данные пользователя
         const user = tg.initDataUnsafe?.user;
-        if (user) {
-            document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
-        } else {
-            document.getElementById('greeting').innerText = `Привет!`;
-        }
+        if (user) document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
 
-        // Функция переключения вкладок
         function switchTab(tabName, element) {
-            // Скрываем все вкладки
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-            // Убираем выделение со всех кнопок меню
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
-            // Показываем нужную вкладку и выделяем кнопку
             document.getElementById('tab-' + tabName).classList.add('active');
             element.classList.add('active');
-            
-            // Легкая вибрация при нажатии (доступна на iPhone и Android)
             tg.HapticFeedback.impactOccurred('light');
         }
-    </script>
-    <!-- Форма добавления -->
-<div id="add-form" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color); padding: 20px; z-index: 100; flex-direction: column; justify-content: center;">
-    <h3>Новая запись</h3>
-    <input type="text" id="input-title" placeholder="Название (например, 'Долг другу')" style="padding: 10px; margin-bottom: 10px; font-size: 16px; width: 100%; box-sizing: border-box;">
-    <input type="number" id="input-amount" placeholder="Сумма (например, 5000)" style="padding: 10px; margin-bottom: 10px; font-size: 16px; width: 100%; box-sizing: border-box;">
-    
-    <!-- Выбор вкладки, куда сохранить -->
-    <select id="input-type" style="padding: 10px; margin-bottom: 20px; font-size: 16px; width: 100%; box-sizing: border-box;">
-        <option value="add_debt">Долг</option>
-        <option value="add_goal">Цель</option>
-        <option value="add_saving">Сбережение</option>
-    </select>
 
-    <button onclick="submitForm()" style="margin-bottom: 10px;">Сохранить</button>
-    <button onclick="closeAddForm()" style="background: gray;">Отмена</button>
-</div>
+        function openAddForm() { document.getElementById('add-form').style.display = 'flex'; }
+        function closeAddForm() { document.getElementById('add-form').style.display = 'none'; }
+
+        function submitForm() {
+            const title = document.getElementById('input-title').value;
+            const amount = document.getElementById('input-amount').value;
+            const type = document.getElementById('input-type').value;
+
+            if (!title || !amount) {
+                tg.showAlert("Заполните все поля!");
+                return;
+            }
+
+            const data = { action: type, title: title, amount: parseFloat(amount) };
+            tg.sendData(JSON.stringify(data));
+            closeAddForm();
+        }
+    </script>
 </body>
 </html>
