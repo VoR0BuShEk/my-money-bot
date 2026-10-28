@@ -27,7 +27,7 @@
         #add-form button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; }
         .btn-save { background: var(--button-color); color: var(--button-text-color); }
         .btn-cancel { background: #ff5252; color: white; }
-        .error-text { color: red; text-align: center; padding: 20px; }
+        .error-text { color: #ff5252; text-align: center; padding: 20px; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -60,15 +60,13 @@
         const userId = user ? user.id : 1; 
         if (user) document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
 
-        // ВАША ССЫЛКА
-        const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech";
+        // ⬇️ ВАША ССЫЛКА НА BOTHOST ⬇️
+        const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech"; 
 
         async function loadData() {
             try {
-                console.log("Запрос к:", `${API_URL}/api/debts?user_id=${userId}`);
-                
                 const resD = await fetch(`${API_URL}/api/debts?user_id=${userId}`);
-                if (!resD.ok) throw new Error(`HTTP error! status: ${resD.status}`);
+                if (!resD.ok) throw new Error(`HTTP ${resD.status}`);
                 const debts = await resD.json();
                 
                 const dList = document.getElementById('debts-list');
@@ -108,12 +106,12 @@
                     sList.appendChild(card);
                 });
 
-           } catch (e) { 
-    console.error("Ошибка API:", e); 
-    const dList = document.getElementById('debts-list');
-    // Покажем саму ссылку, по которой стучимся
-    dList.innerHTML = `<div class="error-text">Ошибка: ${e.message}<br><br>Стучимся сюда:<br>${API_URL}/api/debts?user_id=${userId}</div>`;
-}
+            } catch (e) { 
+                const dList = document.getElementById('debts-list');
+                dList.innerHTML = `<div class="error-text">Ошибка: ${e.message}<br><br>Проверьте ссылку:<br>${API_URL}</div>`;
+            }
+        }
+
         function deleteItem(type, id) {
             if(confirm("Удалить запись?")) {
                 tg.sendData(JSON.stringify({ action: "delete_item", type: type, id: id }));
