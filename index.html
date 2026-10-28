@@ -106,6 +106,24 @@
         .cal-day.selected { background: var(--btn); color: white; font-weight: bold; }
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+        /* ФОНЫ ДЛЯ ВКЛАДОК */
+        
+        /* Фон для вкладки Сбережения (картинка на весь экран) */
+        #tab-savings {
+            background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('savings-bg.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
+        }
+
+        /* Заголовок на темном фоне */
+        #tab-savings h2 {
+            color: #fff;
+            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -121,6 +139,7 @@
         <div id="list-goals"></div>
     </div>
 
+    <!-- Вкладка Сбережения с фоновой картинкой -->
     <div id="tab-savings" class="tab">
         <button class="btn-add" onclick="showForm('savings')">➕ Добавить сбережение</button>
         <div id="list-savings"></div>
@@ -154,7 +173,6 @@
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма">
         
-        <!-- Кнопка для открытия календаря -->
         <div class="date-btn" id="date-btn" onclick="openCalendar()">Срок: не выбран <span>📅</span></div>
         <input type="hidden" id="in-date" value="">
 
@@ -295,10 +313,11 @@
                 </div>`;
             });
 
+            // Карточки сбережений с полупрозрачным белым фоном для читаемости на фото
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
-                <div class="card" style="display:flex; justify-content:space-between;">
+                <div class="card" style="display:flex; justify-content:space-between; background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
                     <div class="card-title">${item.title}</div>
                     <div><span class="amount-green">+ ${item.amount} ₽</span> <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div>
                 </div>`;
@@ -322,10 +341,8 @@
         function showForm(type) {
             document.getElementById('in-type').value = type;
             
-            // Показываем календарь только для долгов и целей
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
-            // Ставим сегодняшнюю дату по умолчанию
             selectedDate = new Date();
             const dd = String(selectedDate.getDate()).padStart(2, '0');
             const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
