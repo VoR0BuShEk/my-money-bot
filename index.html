@@ -107,11 +107,21 @@
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        /* ФОНЫ ДЛЯ ВКЛАДОК */
+        /* ФОНЫ ДЛЯ ВКЛАДОК (С ПУТЯМИ К ПАПКЕ IMAGES) */
         
-        /* Фон для вкладки Сбережения (картинка на весь экран) */
+        /* Фон для вкладки Долги */
+        #tab-debts {
+            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/debts-bg.jpg'); 
+            background-size: cover; 
+            background-position: center; 
+            background-attachment: fixed;
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
+        }
+
+        /* Фон для вкладки Сбережения */
         #tab-savings {
-            background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('savings-bg.jpg'); 
+            background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/savings-bg.jpg'); 
             background-size: cover; 
             background-position: center; 
             background-attachment: fixed;
@@ -120,15 +130,16 @@
         }
 
         /* Заголовок на темном фоне */
-        #tab-savings h2 {
+        #tab-debts h2, #tab-savings h2 {
             color: #fff;
-            text-shadow: 0 2px 4px rgba(0,0,0,0.5);
+            text-shadow: 0 2px 6px rgba(0,0,0,0.8);
         }
     </style>
 </head>
 <body>
     <h2>Мои деньги</h2>
 
+    <!-- Вкладка Долги с фоновой картинкой -->
     <div id="tab-debts" class="tab active">
         <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
         <div id="list-debts"></div>
@@ -272,12 +283,13 @@
 
         // --- ОТРИСОВКА ---
         function render() {
+            // Долги
             document.getElementById('list-debts').innerHTML = '';
             data.debts.forEach((item, i) => {
                 const left = item.amount - (item.paid || 0);
                 const percent = Math.min(Math.round(((item.paid || 0) / item.amount) * 100), 100);
                 document.getElementById('list-debts').innerHTML += `
-                <div class="card">
+                <div class="card" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
                     <div style="display:flex; justify-content:space-between; width:100%;">
                         <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
@@ -293,6 +305,7 @@
                 </div>`;
             });
 
+            // Цели
             document.getElementById('list-goals').innerHTML = '';
             data.goals.forEach((item, i) => {
                 const percent = Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100);
@@ -313,7 +326,7 @@
                 </div>`;
             });
 
-            // Карточки сбережений с полупрозрачным белым фоном для читаемости на фото
+            // Сбережения
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
