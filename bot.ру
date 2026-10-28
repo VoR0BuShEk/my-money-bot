@@ -122,7 +122,7 @@ def parse_date_smart(text):
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
     
-    # ⬇️ ВСТАВЬТЕ СЮДА ВАШУ ССЫЛКУ ИЗ GITHUB PAGES ⬇️
+    # ⬇️ ВАША ССЫЛКА НА GITHUB PAGES ВСТАВЛЯЕТСЯ СЮДА:
     my_app_url = "https://vor0bushek.github.io/my-money-bot/"
     
     kb = ReplyKeyboardMarkup(
@@ -131,7 +131,7 @@ async def start(message: types.Message, state: FSMContext):
     )
     await message.answer("Привет! Нажми на кнопку ниже, чтобы открыть приложение:", reply_markup=kb)
 
-# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP =================
+# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP (СТОИТ СРАЗУ ПОСЛЕ СТАРТА) =================
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message):
     try:
@@ -156,7 +156,7 @@ async def handle_webapp_data(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка обработки данных: {e}")
 
-# ================= ОСТАЛЬНЫЕ ХЭНДЛЕРЫ =================
+# ================= ОСТАЛЬНЫЕ КОМАНДЫ =================
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
