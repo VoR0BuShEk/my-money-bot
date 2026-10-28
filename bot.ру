@@ -69,24 +69,36 @@ def back_menu():
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
-# --- ВЕБ-СЕРВЕР ДЛЯ MINI APP ---
+# --- ВЕБ-СЕРВЕР ДЛЯ MINI APP (С ЗАГОЛОВКАМИ CORS) ---
 async def api_get_debts(request):
     user_id = request.query.get('user_id', 1)
     debts = await asyncio.to_thread(db_fetchall, "SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (user_id,))
     data = [{"id": d[0], "title": d[1], "kind": d[2], "amount": d[3], "due_date": d[4], "is_paid": d[5]} for d in debts]
-    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+    return web.json_response(data, headers={
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 
+        'Access-Control-Allow-Headers': '*'
+    })
 
 async def api_get_goals(request):
     user_id = request.query.get('user_id', 1)
     goals = await asyncio.to_thread(db_fetchall, "SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (user_id,))
     data = [{"id": g[0], "title": g[1], "price": g[2], "due_date": g[3], "saved": g[4]} for g in goals]
-    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+    return web.json_response(data, headers={
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 
+        'Access-Control-Allow-Headers': '*'
+    })
 
 async def api_get_savings(request):
     user_id = request.query.get('user_id', 1)
     savings = await asyncio.to_thread(db_fetchall, "SELECT id, amount, source, date FROM savings WHERE user_id = ?", (user_id,))
     data = [{"id": s[0], "amount": s[1], "source": s[2], "date": s[3]} for s in savings]
-    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+    return web.json_response(data, headers={
+        'Access-Control-Allow-Origin': '*', 
+        'Access-Control-Allow-Methods': 'GET, POST, OPTIONS', 
+        'Access-Control-Allow-Headers': '*'
+    })
 
 async def start_web_server():
     app = web.Application()
@@ -135,7 +147,6 @@ def parse_date_smart(text):
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
-    # Я уже вставил правильную ссылку с "о" (буквой) и добавил ?v=5 для сброса кэша
     my_app_url = "https://vor0bushek.github.io/my-money-bot/?v=5"
     kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🚀 Открыть трекер", web_app=WebAppInfo(url=my_app_url))]], resize_keyboard=True)
     await message.answer("Привет! Нажми на кнопку ниже:", reply_markup=kb)
@@ -167,7 +178,7 @@ async def handle_webapp_data(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
-# ================= ОСТАЛЬНЫЕ ХЭНДЛЕРЫ (Сокращены для удобства, но рабочие) =================
+# ================= ОСТАЛЬНЫЕ ХЭНДЛЕРЫ =================
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
