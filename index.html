@@ -62,4 +62,76 @@
         // ⬇️ ВАША ССЫЛКА НА BOTHOST ⬇️
         const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech"; 
 
-        async function loadData
+        async function loadData() {
+            try {
+                const resD = await fetch(`${API_URL}/api/debts?user_id=${userId}`);
+                const debts = await resD.json();
+                const dList = document.getElementById('debts-list');
+                dList.innerHTML = debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
+                debts.forEach(d => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${d.title}</div><div class="card-subtitle">Срок: ${d.due_date}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount">${d.amount} ₽</div>
+                                      <button class="btn-delete" onclick="deleteItem('debts', ${d.id})">🗑</button></div>`;
+                    dList.appendChild(card);
+                });
+
+                const resG = await fetch(`${API_URL}/api/goals?user_id=${userId}`);
+                const goals = await resG.json();
+                const gList = document.getElementById('goals-list');
+                gList.innerHTML = goals.length ? '' : '<p style="text-align:center; color:gray;">Нет целей</p>';
+                goals.forEach(g => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${g.title}</div><div class="card-subtitle">Накоплено ${g.saved} из ${g.price}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount goal-amount">${Math.round((g.saved/g.price)*100)}%</div>
+                                      <button class="btn-delete" onclick="deleteItem('goals', ${g.id})">🗑</button></div>`;
+                    gList.appendChild(card);
+                });
+
+                const resS = await fetch(`${API_URL}/api/savings?user_id=${userId}`);
+                const savings = await resS.json();
+                const sList = document.getElementById('savings-list');
+                sList.innerHTML = savings.length ? '' : '<p style="text-align:center; color:gray;">Нет сбережений</p>';
+                savings.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${s.source}</div><div class="card-subtitle">${s.date}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount goal-amount">+ ${s.amount} ₽</div>
+                                      <button class="btn-delete" onclick="deleteItem('savings', ${s.id})">🗑</button></div>`;
+                    sList.appendChild(card);
+                });
+
+            } catch (e) { console.error("Ошибка API:", e); }
+        }
+
+        function deleteItem(type, id) {
+            if(confirm("Удалить запись?")) {
+                tg.sendData(JSON.stringify({ action: "delete_item", type: type, id: id }));
+            }
+        }
+
+        function switchTab(tabName, element) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById('tab-' + tabName).classList.add('active');
+            element.classList.add('active');
+        }
+
+        function openAddForm() { document.getElementById('add-form').style.display = 'flex'; }
+        function closeAddForm() { document.getElementById('add-form').style.display = 'none'; }
+
+        function submitForm() {
+            const title = document.getElementById('input-title').value;
+            const amount = document.getElementById('input-amount').value;
+            const type = document.getElementById('input-type').value;
+            if (!title || !amount) { tg.showAlert("Заполните поля!"); return; }
+            tg.sendData(JSON.stringify({ action: type, title: title, amount: parseFloat(amount) }));
+            closeAddForm();
+        }
+
+        loadData();
+    </script>
+</body>
+</html>
