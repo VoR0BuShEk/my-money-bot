@@ -5,6 +5,7 @@ import re
 import json
 import logging
 from datetime import datetime, timedelta
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F, types
 from aiogram.filters import Command
 from aiogram.fsm.context import FSMContext
@@ -16,6 +17,7 @@ from apscheduler.schedulers.asyncio import AsyncIOScheduler
 logging.basicConfig(level=logging.INFO)
 DB_PATH = os.getenv("DB_PATH", "bot_database.sqlite")
 
+# --- БАЗА ДАННЫХ ---
 def db_init():
     try:
         db_dir = os.path.dirname(DB_PATH)
@@ -46,6 +48,7 @@ def db_fetchall(query, params=()):
     conn.close()
     return rows
 
+# --- СОСТОЯНИЯ ---
 class DebtForm(StatesGroup):
     title = State()
     kind = State()
@@ -64,16 +67,12 @@ class SavingForm(StatesGroup):
 class DepositForm(StatesGroup):
     amount = State()
 
+# --- КЛАВИАТУРЫ ---
 def main_menu():
-    kb = [
-        [KeyboardButton(text="💰 Долги"), KeyboardButton(text="🎯 Цели")],
-        [KeyboardButton(text="🏦 Сбережения"), KeyboardButton(text="📊 Статистика")]
-    ]
-    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="💰 Долги"), KeyboardButton(text="🎯 Цели")], [KeyboardButton(text="🏦 Сбережения"), KeyboardButton(text="📊 Статистика")]], resize_keyboard=True)
 
 def kind_menu():
-    kb = [[KeyboardButton(text="Мелкие")], [KeyboardButton(text="Кредиты")]]
-    return ReplyKeyboardMarkup(keyboard=kb, resize_keyboard=True, one_time_keyboard=True)
+    return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Мелкие")], [KeyboardButton(text="Кредиты")]], resize_keyboard=True, one_time_keyboard=True)
 
 def back_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Отмена")]], resize_keyboard=True, one_time_keyboard=True)
@@ -81,21 +80,50 @@ def back_menu():
 bot = Bot(token=os.getenv("BOT_TOKEN"))
 dp = Dispatcher(storage=MemoryStorage())
 
+# --- ВЕБ-СЕРВЕР ДЛЯ MINI APP ---
+async def api_get_debts(request):
+    user_id = request.query.get('user_id', 1)
+    debts = await asyncio.to_thread(db_fetchall, "SELECT id, title, kind, amount, due_date, is_paid FROM debts WHERE user_id = ?", (user_id,))
+    data = [{"id": d[0], "title": d[1], "kind": d[2], "amount": d[3], "due_date": d[4], "is_paid": d[5]} for d in debts]
+    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+
+async def api_get_goals(request):
+    user_id = request.query.get('user_id', 1)
+    goals = await asyncio.to_thread(db_fetchall, "SELECT id, title, price, due_date, saved FROM goals WHERE user_id = ?", (user_id,))
+    data = [{"id": g[0], "title": g[1], "price": g[2], "due_date": g[3], "saved": g[4]} for g in goals]
+    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+
+async def api_get_savings(request):
+    user_id = request.query.get('user_id', 1)
+    savings = await asyncio.to_thread(db_fetchall, "SELECT id, amount, source, date FROM savings WHERE user_id = ?", (user_id,))
+    data = [{"id": s[0], "amount": s[1], "source": s[2], "date": s[3]} for s in savings]
+    return web.json_response(data, headers={'Access-Control-Allow-Origin': '*'})
+
+async def start_web_server():
+    app = web.Application()
+    app.router.add_get('/api/debts', api_get_debts)
+    app.router.add_get('/api/goals', api_get_goals)
+    app.router.add_get('/api/savings', api_get_savings)
+    runner = web.AppRunner(app)
+    await runner.setup()
+    port = int(os.getenv("PORT", 8080))
+    site = web.TCPSite(runner, '0.0.0.0', port)
+    await site.start()
+    print(f"🌐 Веб-сервер для Mini App запущен на порту {port}")
+
+# --- ФОНОВАЯ ЗАДАЧА ---
 async def check_reminders():
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     try:
         debts = await asyncio.to_thread(db_fetchall, "SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
-        goals = await asyncio.to_thread(db_fetchall, "SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,))
         for d in debts:
             try: await bot.send_message(d[0], f"🔔 Напоминание! Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб.")
-            except Exception: pass
-        for g in goals:
-            try: await bot.send_message(g[0], f"🔔 Напоминание! Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)")
             except Exception: pass
     except Exception as e: print(f"Ошибка напоминаний: {e}")
 
 async def main():
     await asyncio.to_thread(db_init)
+    asyncio.create_task(start_web_server())
     try:
         scheduler = AsyncIOScheduler()
         scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
@@ -111,9 +139,7 @@ def parse_date_smart(text):
     if "через неделю" in text: return (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     clean_text = text.replace('.', '-').replace('/', '-').replace(' ', '')
     for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%d-%m-%y']:
-        try:
-            dt = datetime.strptime(clean_text, fmt)
-            return dt.strftime('%Y-%m-%d')
+        try: return datetime.strptime(clean_text, fmt).strftime('%Y-%m-%d')
         except ValueError: continue
     return None
 
@@ -121,22 +147,26 @@ def parse_date_smart(text):
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
-    
-    # ⬇️ ВАША ССЫЛКА НА GITHUB PAGES ВСТАВЛЯЕТСЯ СЮДА:
+    # ⬇️ ВАША ССЫЛКА НА GITHUB PAGES ⬇️
     my_app_url = "https://vor0bushek.github.io/my-money-bot/"
-    
-    kb = ReplyKeyboardMarkup(
-        keyboard=[[KeyboardButton(text="🚀 Открыть трекер", web_app=WebAppInfo(url=my_app_url))]],
-        resize_keyboard=True
-    )
+    kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🚀 Открыть трекер", web_app=WebAppInfo(url=my_app_url))]], resize_keyboard=True)
     await message.answer("Привет! Нажми на кнопку ниже, чтобы открыть приложение:", reply_markup=kb)
 
-# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP (СТОИТ СРАЗУ ПОСЛЕ СТАРТА) =================
+# ================= ОБРАБОТКА ДАННЫХ ИЗ MINI APP =================
 @dp.message(F.web_app_data)
 async def handle_webapp_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
+        
+        if action == 'delete_item':
+            item_type = data.get('type')
+            item_id = data.get('id')
+            table_name = "debts" if item_type == "debts" else ("goals" if item_type == "goals" else "savings")
+            await asyncio.to_thread(db_execute, f"DELETE FROM {table_name} WHERE id = ? AND user_id = ?", (item_id, message.from_user.id))
+            await message.answer("🗑 Запись удалена! Переоткройте приложение, чтобы обновить список.")
+            return
+
         title = data.get('title')
         amount = data.get('amount')
         user_id = message.from_user.id
@@ -156,7 +186,7 @@ async def handle_webapp_data(message: types.Message):
     except Exception as e:
         await message.answer(f"❌ Ошибка обработки данных: {e}")
 
-# ================= ОСТАЛЬНЫЕ КОМАНДЫ =================
+# ================= КОМАНДЫ БОТА =================
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
