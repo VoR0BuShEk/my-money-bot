@@ -27,6 +27,7 @@
         #add-form button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; }
         .btn-save { background: var(--button-color); color: var(--button-text-color); }
         .btn-cancel { background: #ff5252; color: white; }
+        .error-text { color: red; text-align: center; padding: 20px; }
     </style>
 </head>
 <body>
@@ -59,13 +60,17 @@
         const userId = user ? user.id : 1; 
         if (user) document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
 
-        // ⬇️ ВАША ССЫЛКА НА BOTHOST ⬇️
-        const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech"; 
+        // ВАША ССЫЛКА
+        const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech";
 
         async function loadData() {
             try {
+                console.log("Запрос к:", `${API_URL}/api/debts?user_id=${userId}`);
+                
                 const resD = await fetch(`${API_URL}/api/debts?user_id=${userId}`);
+                if (!resD.ok) throw new Error(`HTTP error! status: ${resD.status}`);
                 const debts = await resD.json();
+                
                 const dList = document.getElementById('debts-list');
                 dList.innerHTML = debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
                 debts.forEach(d => {
@@ -103,7 +108,12 @@
                     sList.appendChild(card);
                 });
 
-            } catch (e) { console.error("Ошибка API:", e); }
+            } catch (e) { 
+                console.error("Ошибка API:", e); 
+                // Показываем ошибку прямо на экране, чтобы мы поняли, в чем дело
+                const dList = document.getElementById('debts-list');
+                dList.innerHTML = `<div class="error-text">Ошибка связи с сервером:<br>${e.message}</div>`;
+            }
         }
 
         function deleteItem(type, id) {
