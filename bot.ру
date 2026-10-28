@@ -127,7 +127,7 @@ async def check_reminders():
 
 async def main():
     await asyncio.to_thread(db_init)
-    asyncio.create_task(start_web_server())
+    asyncio.create_task(start_web_server()) # Запуск веб-сервера
     try:
         scheduler = AsyncIOScheduler()
         scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
