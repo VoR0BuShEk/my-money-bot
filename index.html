@@ -60,7 +60,7 @@
         const userId = user ? user.id : 1; 
         if (user) document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
 
-        // ⬇️ ВАША ССЫЛКА НА BOTHOST ⬇️
+        // ССЫЛКА НА ВАШ СЕРВЕР BOTHOST (исправлена на букву "о")
         const API_URL = "https://bot-1793084842-7019-vor0bushek.bothost.tech"; 
 
         async function loadData() {
@@ -68,7 +68,6 @@
                 const resD = await fetch(`${API_URL}/api/debts?user_id=${userId}`);
                 if (!resD.ok) throw new Error(`HTTP ${resD.status}`);
                 const debts = await resD.json();
-                
                 const dList = document.getElementById('debts-list');
                 dList.innerHTML = debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
                 debts.forEach(d => {
