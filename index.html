@@ -6,14 +6,7 @@
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
     <title>Мой Финансовый Трекер</title>
     <style>
-        :root {
-            --bg-color: var(--tg-theme-bg-color, #ffffff);
-            --text-color: var(--tg-theme-text-color, #000000);
-            --hint-color: var(--tg-theme-hint-color, #999999);
-            --button-color: var(--tg-theme-button-color, #2481cc);
-            --button-text-color: var(--tg-theme-button-text-color, #ffffff);
-            --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0);
-        }
+        :root { --bg-color: var(--tg-theme-bg-color, #ffffff); --text-color: var(--tg-theme-text-color, #000000); --hint-color: var(--tg-theme-hint-color, #999999); --button-color: var(--tg-theme-button-color, #2481cc); --button-text-color: var(--tg-theme-button-text-color, #ffffff); --secondary-bg: var(--tg-theme-secondary-bg-color, #f0f0f0); }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: var(--bg-color); color: var(--text-color); margin: 0; padding: 16px; padding-bottom: 80px; }
         h2 { margin-top: 0; font-size: 24px; }
         .tab-content { display: none; }
@@ -23,7 +16,8 @@
         .card-subtitle { font-size: 14px; color: var(--hint-color); margin-top: 4px; }
         .card-amount { font-weight: bold; font-size: 18px; color: #e53935; }
         .goal-amount { color: #43a047; }
-        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--bg-color); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--secondary-bg); box-shadow: 0 -2px 10px rgba(0,0,0,0.05); }
+        .btn-delete { background: none; border: none; color: #ff5252; font-size: 18px; cursor: pointer; padding: 5px; }
+        .bottom-nav { position: fixed; bottom: 0; left: 0; right: 0; background-color: var(--bg-color); display: flex; justify-content: space-around; padding: 12px 0; border-top: 1px solid var(--secondary-bg); }
         .nav-item { text-align: center; font-size: 12px; color: var(--hint-color); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 4px; width: 33%; }
         .nav-item.active { color: var(--button-color); }
         .nav-icon { font-size: 20px; }
@@ -39,80 +33,96 @@
     <h2 id="greeting">Загрузка...</h2>
     <button class="btn-add" onclick="openAddForm()">➕ Добавить запись</button>
 
-    <!-- Вкладка Долги -->
-    <div id="tab-debts" class="tab-content active">
-        <div class="card">
-            <div>
-                <div class="card-title">Кредит на телефон (Пример)</div>
-                <div class="card-subtitle">Срок: 15.11.2026</div>
-            </div>
-            <div class="card-amount">15 000 ₽</div>
-        </div>
-    </div>
+    <div id="tab-debts" class="tab-content active"><div id="debts-list"><p style="text-align:center;">Загрузка...</p></div></div>
+    <div id="tab-goals" class="tab-content"><div id="goals-list"><p style="text-align:center;">Загрузка...</p></div></div>
+    <div id="tab-savings" class="tab-content"><div id="savings-list"><p style="text-align:center;">Загрузка...</p></div></div>
 
-    <!-- Вкладка Цели -->
-    <div id="tab-goals" class="tab-content">
-        <div class="card">
-            <div>
-                <div class="card-title">Отпуск на море 🌴 (Пример)</div>
-                <div class="card-subtitle">Накоплено 30 000 из 100 000</div>
-            </div>
-            <div class="card-amount goal-amount">30%</div>
-        </div>
-    </div>
-
-    <!-- Вкладка Сбережения -->
-    <div id="tab-savings" class="tab-content">
-        <div class="card">
-            <div>
-                <div class="card-title">Зарплата (Пример)</div>
-                <div class="card-subtitle">01.10.2026</div>
-            </div>
-            <div class="card-amount goal-amount">+ 50 000 ₽</div>
-        </div>
-    </div>
-
-    <!-- Нижнее меню -->
     <div class="bottom-nav">
-        <div class="nav-item active" onclick="switchTab('debts', this)">
-            <div class="nav-icon">💳</div><div>Долги</div>
-        </div>
-        <div class="nav-item" onclick="switchTab('goals', this)">
-            <div class="nav-icon">🎯</div><div>Цели</div>
-        </div>
-        <div class="nav-item" onclick="switchTab('savings', this)">
-            <div class="nav-icon">🏦</div><div>Сбережения</div>
-        </div>
+        <div class="nav-item active" onclick="switchTab('debts', this)"><div class="nav-icon">💳</div><div>Долги</div></div>
+        <div class="nav-item" onclick="switchTab('goals', this)"><div class="nav-icon">🎯</div><div>Цели</div></div>
+        <div class="nav-item" onclick="switchTab('savings', this)"><div class="nav-icon">🏦</div><div>Сбережения</div></div>
     </div>
 
-    <!-- Форма добавления -->
     <div id="add-form">
         <h3>Новая запись</h3>
-        <input type="text" id="input-title" placeholder="Название (например, 'Долг другу')">
-        <input type="number" id="input-amount" placeholder="Сумма (например, 5000)">
-        <select id="input-type">
-            <option value="add_debt">Долг</option>
-            <option value="add_goal">Цель</option>
-            <option value="add_saving">Сбережение</option>
-        </select>
+        <input type="text" id="input-title" placeholder="Название">
+        <input type="number" id="input-amount" placeholder="Сумма">
+        <select id="input-type"><option value="add_debt">Долг</option><option value="add_goal">Цель</option><option value="add_saving">Сбережение</option></select>
         <button class="btn-save" onclick="submitForm()">Сохранить</button>
         <button class="btn-cancel" onclick="closeAddForm()">Отмена</button>
     </div>
 
     <script>
         const tg = window.Telegram.WebApp;
-        tg.ready();
-        tg.expand();
-
+        tg.ready(); tg.expand();
         const user = tg.initDataUnsafe?.user;
+        const userId = user ? user.id : 1; // Берем ID из Telegram
         if (user) document.getElementById('greeting').innerText = `Привет, ${user.first_name}!`;
+
+        // ВАЖНО: Вставьте сюда ссылку на вашего бота на Bothost (через https)
+        const API_URL = "https://ВАШ_ДОМЕН_BOTHOST.ru"; 
+
+        // Загрузка данных
+        async function loadData() {
+            try {
+                // Долги
+                const resD = await fetch(`${API_URL}/api/debts?user_id=${userId}`);
+                const debts = await resD.json();
+                const dList = document.getElementById('debts-list');
+                dList.innerHTML = debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
+                debts.forEach(d => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${d.title}</div><div class="card-subtitle">Срок: ${d.due_date}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount">${d.amount} ₽</div>
+                                      <button class="btn-delete" onclick="deleteItem('debts', ${d.id})">🗑</button></div>`;
+                    dList.appendChild(card);
+                });
+
+                // Цели
+                const resG = await fetch(`${API_URL}/api/goals?user_id=${userId}`);
+                const goals = await resG.json();
+                const gList = document.getElementById('goals-list');
+                gList.innerHTML = goals.length ? '' : '<p style="text-align:center; color:gray;">Нет целей</p>';
+                goals.forEach(g => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${g.title}</div><div class="card-subtitle">Накоплено ${g.saved} из ${g.price}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount goal-amount">${Math.round((g.saved/g.price)*100)}%</div>
+                                      <button class="btn-delete" onclick="deleteItem('goals', ${g.id})">🗑</button></div>`;
+                    gList.appendChild(card);
+                });
+
+                // Сбережения
+                const resS = await fetch(`${API_URL}/api/savings?user_id=${userId}`);
+                const savings = await resS.json();
+                const sList = document.getElementById('savings-list');
+                sList.innerHTML = savings.length ? '' : '<p style="text-align:center; color:gray;">Нет сбережений</p>';
+                savings.forEach(s => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
+                    card.innerHTML = `<div><div class="card-title">${s.source}</div><div class="card-subtitle">${s.date}</div></div>
+                                      <div style="display:flex; align-items:center; gap:10px;"><div class="card-amount goal-amount">+ ${s.amount} ₽</div>
+                                      <button class="btn-delete" onclick="deleteItem('savings', ${s.id})">🗑</button></div>`;
+                    sList.appendChild(card);
+                });
+
+            } catch (e) { console.error("Ошибка API:", e); }
+        }
+
+        // Удаление записи (отправляет данные боту для удаления)
+        function deleteItem(type, id) {
+            if(confirm("Удалить запись?")) {
+                // Используем sendData, чтобы бот удалил запись
+                tg.sendData(JSON.stringify({ action: "delete_item", type: type, id: id }));
+            }
+        }
 
         function switchTab(tabName, element) {
             document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
             document.getElementById('tab-' + tabName).classList.add('active');
             element.classList.add('active');
-            tg.HapticFeedback.impactOccurred('light');
         }
 
         function openAddForm() { document.getElementById('add-form').style.display = 'flex'; }
@@ -122,16 +132,13 @@
             const title = document.getElementById('input-title').value;
             const amount = document.getElementById('input-amount').value;
             const type = document.getElementById('input-type').value;
-
-            if (!title || !amount) {
-                tg.showAlert("Заполните все поля!");
-                return;
-            }
-
-            const data = { action: type, title: title, amount: parseFloat(amount) };
-            tg.sendData(JSON.stringify(data));
+            if (!title || !amount) { tg.showAlert("Заполните поля!"); return; }
+            tg.sendData(JSON.stringify({ action: type, title: title, amount: parseFloat(amount) }));
             closeAddForm();
         }
+
+        // Загружаем данные при старте
+        loadData();
     </script>
 </body>
 </html>
