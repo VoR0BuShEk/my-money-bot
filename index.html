@@ -187,5 +187,21 @@
             tg.HapticFeedback.impactOccurred('light');
         }
     </script>
+    <!-- Форма добавления -->
+<div id="add-form" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg-color); padding: 20px; z-index: 100; flex-direction: column; justify-content: center;">
+    <h3>Новая запись</h3>
+    <input type="text" id="input-title" placeholder="Название (например, 'Долг другу')" style="padding: 10px; margin-bottom: 10px; font-size: 16px; width: 100%; box-sizing: border-box;">
+    <input type="number" id="input-amount" placeholder="Сумма (например, 5000)" style="padding: 10px; margin-bottom: 10px; font-size: 16px; width: 100%; box-sizing: border-box;">
+    
+    <!-- Выбор вкладки, куда сохранить -->
+    <select id="input-type" style="padding: 10px; margin-bottom: 20px; font-size: 16px; width: 100%; box-sizing: border-box;">
+        <option value="add_debt">Долг</option>
+        <option value="add_goal">Цель</option>
+        <option value="add_saving">Сбережение</option>
+    </select>
+
+    <button onclick="submitForm()" style="margin-bottom: 10px;">Сохранить</button>
+    <button onclick="closeAddForm()" style="background: gray;">Отмена</button>
+</div>
 </body>
 </html>
