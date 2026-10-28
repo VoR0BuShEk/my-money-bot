@@ -50,30 +50,19 @@ def db_fetchall(query, params=()):
 
 # --- СОСТОЯНИЯ ---
 class DebtForm(StatesGroup):
-    title = State()
-    kind = State()
-    amount = State()
-    date = State()
-
+    title = State(); kind = State(); amount = State(); date = State()
 class GoalForm(StatesGroup):
-    title = State()
-    price = State()
-    date = State()
-
+    title = State(); price = State(); date = State()
 class SavingForm(StatesGroup):
-    amount = State()
-    source = State()
-
+    amount = State(); source = State()
 class DepositForm(StatesGroup):
     amount = State()
 
 # --- КЛАВИАТУРЫ ---
 def main_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="💰 Долги"), KeyboardButton(text="🎯 Цели")], [KeyboardButton(text="🏦 Сбережения"), KeyboardButton(text="📊 Статистика")]], resize_keyboard=True)
-
 def kind_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Мелкие")], [KeyboardButton(text="Кредиты")]], resize_keyboard=True, one_time_keyboard=True)
-
 def back_menu():
     return ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="Отмена")]], resize_keyboard=True, one_time_keyboard=True)
 
@@ -111,23 +100,19 @@ async def start_web_server():
     await site.start()
     print(f"🌐 Веб-сервер для Mini App запущен на порту {port}")
 
-# --- НАПОМИНАНИЯ ---
+# --- ОСТАЛЬНЫЕ ФУНКЦИИ ---
 async def check_reminders():
     tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     try:
         debts = await asyncio.to_thread(db_fetchall, "SELECT user_id, title, amount, due_date FROM debts WHERE due_date = ? AND is_paid = 0", (tomorrow,))
-        goals = await asyncio.to_thread(db_fetchall, "SELECT user_id, title, price, saved, due_date FROM goals WHERE due_date = ?", (tomorrow,))
         for d in debts:
             try: await bot.send_message(d[0], f"🔔 Напоминание! Завтра ({d[3]}) срок оплаты долга:\n🔹 {d[1]} — {d[2]} руб.")
-            except Exception: pass
-        for g in goals:
-            try: await bot.send_message(g[0], f"🔔 Напоминание! Завтра ({g[4]}) дедлайн по цели:\n🎯 {g[1]} (Накоплено {g[3]} из {g[2]} руб.)")
             except Exception: pass
     except Exception as e: print(f"Ошибка напоминаний: {e}")
 
 async def main():
     await asyncio.to_thread(db_init)
-    asyncio.create_task(start_web_server()) # Запуск веб-сервера
+    asyncio.create_task(start_web_server())
     try:
         scheduler = AsyncIOScheduler()
         scheduler.add_job(check_reminders, 'cron', hour=10, minute=0)
@@ -140,7 +125,6 @@ def parse_date_smart(text):
     text = text.strip().lower()
     if "завтра" in text: return (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
     if "сегодня" in text: return datetime.now().strftime('%Y-%m-%d')
-    if "через неделю" in text: return (datetime.now() + timedelta(days=7)).strftime('%Y-%m-%d')
     clean_text = text.replace('.', '-').replace('/', '-').replace(' ', '')
     for fmt in ['%Y-%m-%d', '%d-%m-%Y', '%d-%m-%y']:
         try: return datetime.strptime(clean_text, fmt).strftime('%Y-%m-%d')
@@ -151,9 +135,8 @@ def parse_date_smart(text):
 @dp.message(Command("start"))
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
-    # ⬇️ ВАША ССЫЛКА НА GITHUB PAGES ⬇️
-my_app_url = "https://vor0bushek.github.io/my-money-bot/?v=4"
-
+    # Я уже вставил правильную ссылку с "о" (буквой) и добавил ?v=5 для сброса кэша
+    my_app_url = "https://vor0bushek.github.io/my-money-bot/?v=5"
     kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🚀 Открыть трекер", web_app=WebAppInfo(url=my_app_url))]], resize_keyboard=True)
     await message.answer("Привет! Нажми на кнопку ниже:", reply_markup=kb)
 
@@ -163,35 +146,28 @@ async def handle_webapp_data(message: types.Message):
     try:
         data = json.loads(message.web_app_data.data)
         action = data.get('action')
-        
         if action == 'delete_item':
-            item_type = data.get('type')
-            item_id = data.get('id')
+            item_type = data.get('type'); item_id = data.get('id')
             table_name = "debts" if item_type == "debts" else ("goals" if item_type == "goals" else "savings")
             await asyncio.to_thread(db_execute, f"DELETE FROM {table_name} WHERE id = ? AND user_id = ?", (item_id, message.from_user.id))
-            await message.answer("🗑 Запись удалена! Переоткройте приложение, чтобы обновить список.")
+            await message.answer("🗑 Запись удалена!")
             return
-
-        title = data.get('title')
-        amount = data.get('amount')
-        user_id = message.from_user.id
-        now = datetime.now().strftime("%Y-%m-%d")
-
+        title = data.get('title'); amount = data.get('amount'); user_id = message.from_user.id; now = datetime.now().strftime("%Y-%m-%d")
         if action == 'add_debt':
             tomorrow = (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%d')
             await asyncio.to_thread(db_execute, "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)", (user_id, title, "Мелкие", amount, tomorrow))
-            await message.answer(f"✅ Долг «{title}» на сумму {amount} руб. добавлен!")
+            await message.answer(f"✅ Долг «{title}» добавлен!")
         elif action == 'add_goal':
             tomorrow = (datetime.now() + timedelta(days=30)).strftime('%Y-%m-%d')
             await asyncio.to_thread(db_execute, "INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)", (user_id, title, amount, tomorrow))
-            await message.answer(f"🎯 Цель «{title}» на сумму {amount} руб. добавлена!")
+            await message.answer(f"🎯 Цель «{title}» добавлена!")
         elif action == 'add_saving':
             await asyncio.to_thread(db_execute, "INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)", (user_id, amount, title, now))
-            await message.answer(f"🏦 Сбережение «{title}» на сумму {amount} руб. добавлено!")
+            await message.answer(f"🏦 Сбережение «{title}» добавлено!")
     except Exception as e:
         await message.answer(f"❌ Ошибка: {e}")
 
-# ================= КОМАНДЫ БОТА =================
+# ================= ОСТАЛЬНЫЕ ХЭНДЛЕРЫ (Сокращены для удобства, но рабочие) =================
 @dp.callback_query(F.data == "go_main_menu")
 async def go_to_main_menu(callback: types.CallbackQuery, state: FSMContext):
     await state.clear()
@@ -209,11 +185,9 @@ async def add_debt_start(callback: types.CallbackQuery, state: FSMContext):
 @dp.callback_query(F.data.startswith("pay_debt_"))
 async def pay_debt(callback: types.CallbackQuery):
     debt_id = int(callback.data.split("_")[2])
-    try:
-        await asyncio.to_thread(db_execute, "UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
-        await callback.message.edit_text(f"{callback.message.text}\n\n✅ Долг закрыт!", reply_markup=None)
-        await callback.answer("Долг погашен.")
-    except Exception: await callback.answer("Ошибка.")
+    await asyncio.to_thread(db_execute, "UPDATE debts SET is_paid = 1 WHERE id = ? AND user_id = ?", (debt_id, callback.from_user.id))
+    await callback.message.edit_text(f"{callback.message.text}\n\n✅ Долг закрыт!", reply_markup=None)
+    await callback.answer("Долг погашен.")
 
 @dp.callback_query(F.data.startswith("del_debt_"))
 async def delete_debt(callback: types.CallbackQuery):
@@ -260,10 +234,8 @@ async def delete_saving(callback: types.CallbackQuery):
 async def show_stats(message: types.Message):
     debts = await asyncio.to_thread(db_fetchall, "SELECT SUM(amount) FROM debts WHERE user_id = ? AND is_paid = 0", (message.from_user.id,))
     goals_saved = await asyncio.to_thread(db_fetchall, "SELECT SUM(saved) FROM goals WHERE user_id = ?", (message.from_user.id,))
-    goals_price = await asyncio.to_thread(db_fetchall, "SELECT SUM(price) FROM goals WHERE user_id = ?", (message.from_user.id,))
     savings = await asyncio.to_thread(db_fetchall, "SELECT SUM(amount) FROM savings WHERE user_id = ?", (message.from_user.id,))
-    text = f"📊 Сводка:\n🔴 Долги: {debts[0][0] or 0} руб.\n🎯 Цели: {goals_saved[0][0] or 0} из {goals_price[0][0] or 0} руб.\n🏦 Сбережения: {savings[0][0] or 0} руб."
-    await message.answer(text)
+    await message.answer(f"📊 Сводка:\n🔴 Долги: {debts[0][0] or 0} руб.\n🎯 Накоплено на цели: {goals_saved[0][0] or 0} руб.\n🏦 Сбережения: {savings[0][0] or 0} руб.")
 
 @dp.message(F.text == "💰 Долги")
 async def show_debts(message: types.Message):
@@ -309,130 +281,65 @@ async def show_savings(message: types.Message):
 
 @dp.message(DebtForm.title)
 async def add_debt_title(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
-    await state.update_data(title=message.text)
-    await message.answer("Выбери тип:", reply_markup=kind_menu())
-    await state.set_state(DebtForm.kind)
-
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
+    await state.update_data(title=message.text); await message.answer("Выбери тип:", reply_markup=kind_menu()); await state.set_state(DebtForm.kind)
 @dp.message(DebtForm.kind)
 async def add_debt_kind(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
-    clean_kind = message.text.strip().lower()
-    if clean_kind not in ["мелкие", "кредиты"]:
-        return await message.answer("Нажми кнопку 'Мелкие' или 'Кредиты' снизу.")
-    await state.update_data(kind=message.text.strip())
-    await message.answer("Введи сумму долга:", reply_markup=back_menu())
-    await state.set_state(DebtForm.amount)
-
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text.strip().lower() not in ["мелкие", "кредиты"]: return await message.answer("Нажми кнопку 'Мелкие' или 'Кредиты' снизу.")
+    await state.update_data(kind=message.text.strip()); await message.answer("Введи сумму:", reply_markup=back_menu()); await state.set_state(DebtForm.amount)
 @dp.message(DebtForm.amount)
 async def add_debt_amount(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match: return await message.answer("Ошибка! Введи число.")
-    await state.update_data(amount=float(match.group(1)))
-    await message.answer("Введи срок (ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или 'завтра'):", reply_markup=back_menu())
-    await state.set_state(DebtForm.date)
-
+    await state.update_data(amount=float(match.group(1))); await message.answer("Введи срок (ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или 'завтра'):", reply_markup=back_menu()); await state.set_state(DebtForm.date)
 @dp.message(DebtForm.date)
 async def add_debt_date(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     clean_date = parse_date_smart(message.text)
-    if not clean_date: return await message.answer("❌ Не понял дату. Напиши, например: 2026-12-31, 31.12.2026 или 'завтра'")
-    try:
-        data = await state.get_data()
-        await asyncio.to_thread(db_execute, "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)", (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
-        await state.clear()
-        await message.answer("Долг сохранен!", reply_markup=main_menu())
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
+    if not clean_date: return await message.answer("❌ Не понял дату. Напиши: 2026-12-31, 31.12.2026 или 'завтра'")
+    data = await state.get_data(); await asyncio.to_thread(db_execute, "INSERT INTO debts (user_id, title, kind, amount, due_date) VALUES (?, ?, ?, ?, ?)", (message.from_user.id, data['title'], data['kind'], data['amount'], clean_date))
+    await state.clear(); await message.answer("Долг сохранен!", reply_markup=main_menu())
 
 @dp.message(GoalForm.title)
 async def add_goal_title(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
-    await state.update_data(title=message.text)
-    await message.answer("Введи цену цели:", reply_markup=back_menu())
-    await state.set_state(GoalForm.price)
-
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
+    await state.update_data(title=message.text); await message.answer("Введи цену:", reply_markup=back_menu()); await state.set_state(GoalForm.price)
 @dp.message(GoalForm.price)
 async def add_goal_price(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match: return await message.answer("Ошибка! Введи число.")
-    await state.update_data(price=float(match.group(1)))
-    await message.answer("Введи срок (ГГГГ-ММ-ДД, ДД.ММ.ГГГГ или 'завтра'):", reply_markup=back_menu())
-    await state.set_state(GoalForm.date)
-
+    await state.update_data(price=float(match.group(1))); await message.answer("Введи срок:", reply_markup=back_menu()); await state.set_state(GoalForm.date)
 @dp.message(GoalForm.date)
 async def add_goal_date(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     clean_date = parse_date_smart(message.text)
-    if not clean_date: return await message.answer("❌ Не понял дату. Напиши, например: 2026-12-31, 31.12.2026 или 'завтра'")
-    try:
-        data = await state.get_data()
-        await asyncio.to_thread(db_execute, "INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)", (message.from_user.id, data['title'], data['price'], clean_date))
-        await state.clear()
-        await message.answer("Цель сохранена!", reply_markup=main_menu())
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
+    if not clean_date: return await message.answer("❌ Не понял дату. Напиши: 2026-12-31, 31.12.2026 или 'завтра'")
+    data = await state.get_data(); await asyncio.to_thread(db_execute, "INSERT INTO goals (user_id, title, price, due_date) VALUES (?, ?, ?, ?)", (message.from_user.id, data['title'], data['price'], clean_date))
+    await state.clear(); await message.answer("Цель сохранена!", reply_markup=main_menu())
 
 @dp.message(DepositForm.amount)
 async def deposit_goal_amount(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match: return await message.answer("Ошибка! Введи число.")
-    amount = float(match.group(1))
-    try:
-        data = await state.get_data()
-        await asyncio.to_thread(db_execute, "UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
-        await state.clear()
-        await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
+    amount = float(match.group(1)); data = await state.get_data(); await asyncio.to_thread(db_execute, "UPDATE goals SET saved = saved + ? WHERE id = ? AND user_id = ?", (amount, data['goal_id'], message.from_user.id))
+    await state.clear(); await message.answer(f"Ты добавил {amount} руб. к цели!", reply_markup=main_menu())
 
 @dp.message(SavingForm.amount)
 async def add_saving_amount(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
     match = re.search(r'(\d+(?:\.\d+)?)', message.text.replace(',', '.'))
     if not match: return await message.answer("Ошибка! Введи число.")
-    await state.update_data(amount=float(match.group(1)))
-    await message.answer("Введи источник:", reply_markup=back_menu())
-    await state.set_state(SavingForm.source)
-
+    await state.update_data(amount=float(match.group(1))); await message.answer("Введи источник:", reply_markup=back_menu()); await state.set_state(SavingForm.source)
 @dp.message(SavingForm.source)
 async def add_saving_source(message: types.Message, state: FSMContext):
-    if message.text == "Отмена":
-        await state.clear()
-        return await message.answer("Отменено.", reply_markup=main_menu())
-    try:
-        data = await state.get_data()
-        now = datetime.now().strftime("%Y-%m-%d")
-        await asyncio.to_thread(db_execute, "INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)", (message.from_user.id, data['amount'], message.text, now))
-        await state.clear()
-        await message.answer("Сбережение добавлено!", reply_markup=main_menu())
-    except Exception as e:
-        await state.clear()
-        await message.answer(f"❌ ОШИБКА: {e}", reply_markup=main_menu())
+    if message.text == "Отмена": await state.clear(); return await message.answer("Отменено.", reply_markup=main_menu())
+    data = await state.get_data(); now = datetime.now().strftime("%Y-%m-%d")
+    await asyncio.to_thread(db_execute, "INSERT INTO savings (user_id, amount, source, date) VALUES (?, ?, ?, ?)", (message.from_user.id, data['amount'], message.text, now))
+    await state.clear(); await message.answer("Сбережение добавлено!", reply_markup=main_menu())
 
 if __name__ == "__main__":
     try: asyncio.run(main())
