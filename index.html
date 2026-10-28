@@ -89,6 +89,23 @@
         }
         .stat-title { font-size: 14px; color: #666; margin-bottom: 5px; }
         .stat-value { font-size: 24px; font-weight: bold; }
+
+        /* Календарь */
+        .date-btn { 
+            padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; 
+            border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
+        }
+        
+        #calendar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
+        #calendar-box { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 340px; }
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-weight: bold; font-size: 18px; }
+        .cal-header button { background: #f2f2f7; border: none; color: var(--btn); font-size: 20px; cursor: pointer; padding: 5px 15px; border-radius: 8px; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; text-align: center; }
+        .cal-day-name { font-size: 12px; color: #666; margin-bottom: 8px; font-weight: bold; }
+        .cal-day { padding: 10px 0; border-radius: 8px; cursor: pointer; font-size: 15px; }
+        .cal-day.selected { background: var(--btn); color: white; font-weight: bold; }
+        .cal-day.empty { cursor: default; }
+        .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -131,15 +148,35 @@
         <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Статистика</div></div>
     </div>
 
+    <!-- Форма добавления -->
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма">
+        
+        <!-- Кнопка для открытия календаря -->
+        <div class="date-btn" id="date-btn" onclick="openCalendar()">Срок: не выбран <span>📅</span></div>
+        <input type="hidden" id="in-date" value="">
+
         <input type="hidden" id="in-type">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="document.getElementById('form').style.display = 'none'">Отмена</button>
     </div>
 
+    <!-- Календарь -->
+    <div id="calendar-overlay">
+        <div id="calendar-box">
+            <div class="cal-header">
+                <button onclick="changeMonth(-1)">‹</button>
+                <span id="cal-month-year">Месяц</span>
+                <button onclick="changeMonth(1)">›</button>
+            </div>
+            <div class="cal-grid" id="cal-days"></div>
+            <button class="cal-close" onclick="closeCalendar()">Отмена</button>
+        </div>
+    </div>
+
+    <!-- Форма пополнения -->
     <div id="deposit-form" class="modal">
         <h3 id="dep-title">Внести</h3>
         <input type="number" id="dep-amount" placeholder="Сумма">
@@ -157,7 +194,65 @@
         
         let depType = '';
         let depIndex = -1;
+        
+        let currentDate = new Date();
+        let selectedDate = null;
 
+        // --- КАЛЕНДАРЬ ---
+        function openCalendar() {
+            document.getElementById('calendar-overlay').style.display = 'flex';
+            renderCalendar();
+        }
+
+        function closeCalendar() {
+            document.getElementById('calendar-overlay').style.display = 'none';
+        }
+
+        function changeMonth(offset) {
+            currentDate.setMonth(currentDate.getMonth() + offset);
+            renderCalendar();
+        }
+
+        function renderCalendar() {
+            const year = currentDate.getFullYear();
+            const month = currentDate.getMonth();
+            const monthNames = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь", "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"];
+            document.getElementById('cal-month-year').innerText = `${monthNames[month]} ${year}`;
+
+            const firstDay = new Date(year, month, 1).getDay();
+            const daysInMonth = new Date(year, month + 1, 0).getDate();
+            const startOffset = firstDay === 0 ? 6 : firstDay - 1;
+
+            const daysContainer = document.getElementById('cal-days');
+            daysContainer.innerHTML = '';
+
+            ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
+                daysContainer.innerHTML += `<div class="cal-day-name">${d}</div>`;
+            });
+
+            for (let i = 0; i < startOffset; i++) {
+                daysContainer.innerHTML += `<div class="cal-day empty"></div>`;
+            }
+
+            for (let i = 1; i <= daysInMonth; i++) {
+                const isSelected = selectedDate && selectedDate.getDate() === i && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
+                const cls = isSelected ? 'cal-day selected' : 'cal-day';
+                daysContainer.innerHTML += `<div class="${cls}" onclick="selectDate(${year}, ${month}, ${i})">${i}</div>`;
+            }
+        }
+
+        function selectDate(year, month, day) {
+            selectedDate = new Date(year, month, day);
+            const dd = String(day).padStart(2, '0');
+            const mm = String(month + 1).padStart(2, '0');
+            const formatted = `${dd}.${mm}.${year}`;
+            
+            document.getElementById('in-date').value = formatted;
+            document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+            closeCalendar();
+        }
+
+        // --- ОТРИСОВКА ---
         function render() {
             document.getElementById('list-debts').innerHTML = '';
             data.debts.forEach((item, i) => {
@@ -166,7 +261,7 @@
                 document.getElementById('list-debts').innerHTML += `
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div><div class="card-title">${item.title}</div></div>
+                        <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
                             <div class="amount">${left} ₽</div>
                             <div class="card-sub">из ${item.amount}</div>
@@ -186,7 +281,7 @@
                 document.getElementById('list-goals').innerHTML += `
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div><div class="card-title">${item.title}</div></div>
+                        <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
                             <div class="amount-green">${item.saved || 0} ₽</div>
                             <div class="card-sub">из ${item.amount}</div>
@@ -226,6 +321,20 @@
 
         function showForm(type) {
             document.getElementById('in-type').value = type;
+            
+            // Показываем календарь только для долгов и целей
+            document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
+            
+            // Ставим сегодняшнюю дату по умолчанию
+            selectedDate = new Date();
+            const dd = String(selectedDate.getDate()).padStart(2, '0');
+            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+            const yyyy = selectedDate.getFullYear();
+            const formatted = `${dd}.${mm}.${yyyy}`;
+            
+            document.getElementById('in-date').value = formatted;
+            document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+
             document.getElementById('form').style.display = 'flex';
         }
 
@@ -233,11 +342,12 @@
             const type = document.getElementById('in-type').value;
             const title = document.getElementById('in-title').value;
             const amount = parseFloat(document.getElementById('in-amount').value);
+            const date = document.getElementById('in-date').value;
 
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
-            if (type === 'debts') data.debts.push({ title, amount, paid: 0 });
-            else if (type === 'goals') data.goals.push({ title, amount, saved: 0 });
+            if (type === 'debts') data.debts.push({ title, amount, paid: 0, date });
+            else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date });
             else data.savings.push({ title, amount });
 
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
