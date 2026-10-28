@@ -152,7 +152,8 @@ def parse_date_smart(text):
 async def start(message: types.Message, state: FSMContext):
     await state.clear()
     # ⬇️ ВАША ССЫЛКА НА GITHUB PAGES ⬇️
-    my_app_url = "https://VoROBuShEk.github.io/my-money-bot/app.html"
+my_app_url = "https://VoROBuShEk.github.io/my-money-bot/?v=3"
+
     kb = ReplyKeyboardMarkup(keyboard=[[KeyboardButton(text="🚀 Открыть трекер", web_app=WebAppInfo(url=my_app_url))]], resize_keyboard=True)
     await message.answer("Привет! Нажми на кнопку ниже:", reply_markup=kb)
 
