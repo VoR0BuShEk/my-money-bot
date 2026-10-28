@@ -27,6 +27,12 @@
         .tab { display: none; } 
         .tab.active { display: block; }
 
+        /* ИСПРАВЛЕНИЕ: Добавляем z-index для контента, чтобы он был поверх фона */
+        .tab > * {
+            position: relative;
+            z-index: 2;
+        }
+
         .card { 
             background: var(--card-bg); 
             border-radius: 12px; 
@@ -60,6 +66,9 @@
         .btn-add { 
             background: var(--btn);
             color: white; border: none; padding: 12px; border-radius: 10px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold;
+            /* ИСПРАВЛЕНИЕ: Кнопка точно будет кликабельной */
+            position: relative; 
+            z-index: 3;
         }
 
         .modal { 
@@ -130,7 +139,6 @@
             z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
         }
 
-        /* Фон для Статистики */
         #tab-stats {
             background-image: linear-gradient(rgba(0,0,0,0.2), rgba(0,0,0,0.2)), url('images/stats-bg.jpg'); 
             background-size: cover; background-position: center; background-attachment: fixed;
@@ -138,7 +146,6 @@
             z-index: -1; padding: 16px; padding-top: 60px; padding-bottom: 90px; overflow-y: auto;
         }
 
-        /* Заголовок на темном фоне */
         #tab-debts h2, #tab-goals h2, #tab-savings h2, #tab-stats h2 {
             color: #fff;
             text-shadow: 0 2px 6px rgba(0,0,0,0.8);
@@ -168,7 +175,6 @@
 
     <!-- Вкладка Статистика -->
     <div id="tab-stats" class="tab">
-        <!-- Полупрозрачный фон для блоков статистики, чтобы они читались на фото -->
         <div class="stat-box" style="background: rgba(255,255,255,0.9); backdrop-filter: blur(5px);">
             <div class="stat-title">🔴 Общая сумма долгов</div>
             <div class="stat-value" id="stat-debts" style="color: #ff3b30;">0 ₽</div>
