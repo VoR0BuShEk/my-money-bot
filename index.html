@@ -22,17 +22,15 @@
         .nav-item.active { color: var(--btn); }
         .nav-icon { font-size: 20px; }
         .btn-add { background: var(--btn); color: var(--btn-text); border: none; padding: 12px; border-radius: 8px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold; }
-        #form { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); padding: 20px; z-index: 100; flex-direction: column; justify-content: center; }
+        #form { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: var(--bg); padding: 20px; z-index: 100; flex-direction: column; justify-content: center; overflow-y: auto; }
         #form input, #form select { padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; border: 1px solid var(--hint); border-radius: 8px; background: var(--sec-bg); color: var(--text); }
         #form button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; }
         .btn-save { background: var(--btn); color: var(--btn-text); }
         .btn-cancel { background: #ff5252; color: white; }
         
-        /* Стили для прогресс-бара */
         .progress-bg { background: var(--bg); height: 8px; border-radius: 4px; margin-top: 8px; overflow: hidden; width: 100%; }
         .progress-bar { background: #43a047; height: 100%; border-radius: 4px; }
         
-        /* Стили для статистики */
         .stat-box { background: var(--sec-bg); padding: 20px; border-radius: 12px; margin-bottom: 15px; text-align: center; }
         .stat-title { font-size: 14px; color: var(--hint); margin-bottom: 8px; }
         .stat-value { font-size: 28px; font-weight: bold; }
@@ -89,6 +87,7 @@
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма / Цель">
         <input type="number" id="in-saved" placeholder="Уже накоплено (для целей)" style="display:none;">
+        <input type="date" id="in-date" style="display:none;">
         <input type="hidden" id="in-type">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="hideForm()">Отмена</button>
@@ -116,7 +115,6 @@
         const STORAGE_KEY = 'myFinance_' + userId;
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [] };
 
-        // Переменная для хранения индекса цели, которую мы пополняем
         let currentGoalIndex = -1;
 
         function render() {
@@ -124,7 +122,7 @@
             const lDebts = document.getElementById('list-debts');
             lDebts.innerHTML = data.debts.length ? '' : '<p style="text-align:center; color:gray;">Нет долгов</p>';
             data.debts.forEach((item, i) => {
-                lDebts.innerHTML += `<div class="card"><div><div class="card-title">${item.title}</div><div class="card-sub">Долг</div></div>
+                lDebts.innerHTML += `<div class="card"><div><div class="card-title">${item.title}</div><div class="card-sub">Срок: ${item.date}</div></div>
                     <div style="display:flex; gap:10px; align-items:center;"><div class="amount">${item.amount} ₽</div>
                     <button class="btn-del" onclick="del('debts', ${i})">🗑</button></div></div>`;
             });
@@ -137,7 +135,7 @@
                 const percent = Math.min(Math.round((saved / item.amount) * 100), 100);
                 lGoals.innerHTML += `<div class="card" style="flex-direction: column; align-items: stretch;">
                     <div style="display:flex; justify-content:space-between; align-items:flex-start;">
-                        <div><div class="card-title">${item.title}</div><div class="card-sub">Цель: ${item.amount} ₽</div></div>
+                        <div><div class="card-title">${item.title}</div><div class="card-sub">Цель: ${item.amount} ₽<br>Срок: ${item.date}</div></div>
                         <div style="text-align:right;">
                             <div class="amount amount-green" style="font-size: 16px;">${saved} ₽</div>
                             <div class="card-sub">${percent}%</div>
@@ -155,7 +153,7 @@
             const lSavings = document.getElementById('list-savings');
             lSavings.innerHTML = data.savings.length ? '' : '<p style="text-align:center; color:gray;">Нет сбережений</p>';
             data.savings.forEach((item, i) => {
-                lSavings.innerHTML += `<div class="card"><div><div class="card-title">${item.title}</div><div class="card-sub">Сбережение</div></div>
+                lSavings.innerHTML += `<div class="card"><div><div class="card-title">${item.title}</div><div class="card-sub">Источник</div></div>
                     <div style="display:flex; gap:10px; align-items:center;"><div class="amount amount-green">+ ${item.amount} ₽</div>
                     <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div></div>`;
             });
@@ -177,14 +175,17 @@
             el.classList.add('active');
         }
 
-        // --- ДОБАВЛЕНИЕ ЗАПИСИ ---
         function showForm(type) {
             document.getElementById('in-type').value = type;
             document.getElementById('form-title').innerText = type === 'debts' ? 'Новый долг' : (type === 'goals' ? 'Новая цель' : 'Новое сбережение');
             
-            // Показываем поле "уже накоплено" только для целей
+            // Показываем поле "уже накоплено" и "срок" только для целей и долгов
             document.getElementById('in-saved').style.display = type === 'goals' ? 'block' : 'none';
+            document.getElementById('in-date').style.display = type === 'savings' ? 'none' : 'block';
             
+            // Ставим сегодняшнюю дату по умолчанию
+            document.getElementById('in-date').valueAsDate = new Date();
+
             document.getElementById('form').style.display = 'flex';
         }
 
@@ -200,21 +201,18 @@
             const title = document.getElementById('in-title').value;
             const amount = parseFloat(document.getElementById('in-amount').value);
             const saved = type === 'goals' ? parseFloat(document.getElementById('in-saved').value || 0) : 0;
+            const date = document.getElementById('in-date').value;
 
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
-            data[type].push({ title: title, amount: amount, saved: saved });
+            // Сохраняем локально
+            data[type].push({ title: title, amount: amount, saved: saved, date: date });
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             
             render();
             hideForm();
-
-            // Уведомляем бота
-            const actionMap = { debts: 'add_debt', goals: 'add_goal', savings: 'add_saving' };
-            tg.sendData(JSON.stringify({ action: actionMap[type], title: title, amount: amount }));
         }
 
-        // --- ПОПОЛНЕНИЕ ЦЕЛИ ---
         function openDeposit(index) {
             currentGoalIndex = index;
             document.getElementById('dep-amount').value = '';
@@ -225,7 +223,6 @@
             const amount = parseFloat(document.getElementById('dep-amount').value);
             if (isNaN(amount) || amount <= 0) { tg.showAlert("Введите корректную сумму"); return; }
             
-            // Прибавляем к накоплениям
             data.goals[currentGoalIndex].saved = (data.goals[currentGoalIndex].saved || 0) + amount;
             
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -241,7 +238,6 @@
             }
         }
 
-        // Запускаем отрисовку при старте
         render();
     </script>
 </body>
