@@ -108,14 +108,12 @@
                     sList.appendChild(card);
                 });
 
-            } catch (e) { 
-                console.error("Ошибка API:", e); 
-                // Показываем ошибку прямо на экране, чтобы мы поняли, в чем дело
-                const dList = document.getElementById('debts-list');
-                dList.innerHTML = `<div class="error-text">Ошибка связи с сервером:<br>${e.message}</div>`;
-            }
-        }
-
+           } catch (e) { 
+    console.error("Ошибка API:", e); 
+    const dList = document.getElementById('debts-list');
+    // Покажем саму ссылку, по которой стучимся
+    dList.innerHTML = `<div class="error-text">Ошибка: ${e.message}<br><br>Стучимся сюда:<br>${API_URL}/api/debts?user_id=${userId}</div>`;
+}
         function deleteItem(type, id) {
             if(confirm("Удалить запись?")) {
                 tg.sendData(JSON.stringify({ action: "delete_item", type: type, id: id }));
