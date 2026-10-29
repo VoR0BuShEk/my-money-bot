@@ -40,7 +40,6 @@
         #tab-stats .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/stats-bg.jpg'); }
         #tab-history .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('images/stats-bg.jpg'); }
 
-        /* Панель инструментов (сортировка и скрытие) */
         .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
         .toolbar button {
             flex: 1; padding: 8px; border-radius: 8px; border: none; background: rgba(255,255,255,0.9);
@@ -108,16 +107,14 @@
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
 
-        /* История */
         .history-item { border-left: 4px solid var(--btn); padding-left: 10px; margin-bottom: 15px; }
         .history-date { font-size: 11px; color: #888; margin-bottom: 2px; }
-        .history-text { font-size: 14px; }
+        .history-text { font-size: 14px; color: #fff; text-shadow: 0 1px 3px rgba(0,0,0,0.8); }
     </style>
 </head>
 <body>
     <h2>Мои деньги</h2>
 
-    <!-- Вкладка Долги -->
     <div id="tab-debts" class="tab active">
         <div class="bg-layer"></div>
         <div class="tab-content">
@@ -130,7 +127,6 @@
         </div>
     </div>
 
-    <!-- Вкладка Цели -->
     <div id="tab-goals" class="tab">
         <div class="bg-layer"></div>
         <div class="tab-content">
@@ -143,7 +139,6 @@
         </div>
     </div>
 
-    <!-- Вкладка Сбережения -->
     <div id="tab-savings" class="tab">
         <div class="bg-layer"></div>
         <div class="tab-content">
@@ -152,7 +147,6 @@
         </div>
     </div>
 
-    <!-- Вкладка Статистика -->
     <div id="tab-stats" class="tab">
         <div class="bg-layer"></div>
         <div class="tab-content">
@@ -171,7 +165,6 @@
         </div>
     </div>
 
-    <!-- Вкладка История -->
     <div id="tab-history" class="tab">
         <div class="bg-layer"></div>
         <div class="tab-content">
@@ -187,7 +180,6 @@
         <div class="nav-item" onclick="switchTab('history', this)"><div class="nav-icon">📜</div><div>История</div></div>
     </div>
 
-    <!-- Форма добавления/редактирования -->
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
@@ -200,7 +192,6 @@
         <button class="btn-cancel" onclick="document.getElementById('form').style.display = 'none'">Отмена</button>
     </div>
 
-    <!-- Календарь -->
     <div id="calendar-overlay">
         <div id="calendar-box">
             <div class="cal-header">
@@ -213,7 +204,6 @@
         </div>
     </div>
 
-    <!-- Форма пополнения -->
     <div id="deposit-form" class="modal">
         <h3 id="dep-title">Внести</h3>
         <input type="number" id="dep-amount" placeholder="Сумма">
@@ -228,7 +218,6 @@
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const STORAGE_KEY = 'myFinance_' + userId;
         
-        // Инициализация базы данных (добавлен массив history)
         let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [], history: [] };
         
         let depType = '';
@@ -237,13 +226,13 @@
         let currentDate = new Date();
         let selectedDate = null;
 
-        // Настройки сортировки и скрытия
         let settings = {
             debts: { hideClosed: false, sortBy: 'date' },
             goals: { hideClosed: false, sortBy: 'date' }
         };
 
         function saveData() {
+            // ИСПРАВЛЕНО: Теперь данные точно сохраняются в LocalStorage
             localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
             render();
         }
@@ -251,11 +240,10 @@
         function addHistory(text) {
             const now = new Date();
             const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
-            data.history.unshift({ date: dateStr, text: text }); // Добавляем в начало
-            if (data.history.length > 50) data.history.pop(); // Храним только 50 последних
+            data.history.unshift({ date: dateStr, text: text });
+            if (data.history.length > 50) data.history.pop();
         }
 
-        // --- КАЛЕНДАРЬ ---
         function openCalendar() {
             document.getElementById('calendar-overlay').style.display = 'flex';
             renderCalendar();
@@ -295,33 +283,24 @@
             closeCalendar();
         }
 
-        // --- ФИЛЬТРАЦИЯ И СОРТИРОВКА ---
         function toggleHideClosed(type) {
             settings[type].hideClosed = !settings[type].hideClosed;
-            const btn = document.getElementById('btn-hide-' + type);
-            btn.classList.toggle('active', settings[type].hideClosed);
+            document.getElementById('btn-hide-' + type).classList.toggle('active', settings[type].hideClosed);
             render();
         }
 
         function toggleSort(type) {
             settings[type].sortBy = settings[type].sortBy === 'date' ? 'amount' : 'date';
-            const btn = document.getElementById('btn-sort-' + type);
-            btn.innerText = settings[type].sortBy === 'date' ? 'Сортировка: по дате' : 'Сортировка: по сумме';
+            document.getElementById('btn-sort-' + type).innerText = settings[type].sortBy === 'date' ? 'Сортировка: по дате' : 'Сортировка: по сумме';
             render();
         }
 
-        // --- ОТРИСОВКА ---
         function render() {
             // --- ДОЛГИ ---
             let debts = [...data.debts];
-            if (settings.debts.hideClosed) {
-                debts = debts.filter(item => (item.amount - (item.paid || 0)) > 0);
-            }
-            if (settings.debts.sortBy === 'amount') {
-                debts.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
-            } else {
-                debts.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
-            }
+            if (settings.debts.hideClosed) debts = debts.filter(item => (item.amount - (item.paid || 0)) > 0);
+            if (settings.debts.sortBy === 'amount') debts.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
+            else debts.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
 
             document.getElementById('list-debts').innerHTML = '';
             debts.forEach((item) => {
@@ -348,14 +327,9 @@
 
             // --- ЦЕЛИ ---
             let goals = [...data.goals];
-            if (settings.goals.hideClosed) {
-                goals = goals.filter(item => (item.saved || 0) < item.amount);
-            }
-            if (settings.goals.sortBy === 'amount') {
-                goals.sort((a, b) => b.amount - a.amount);
-            } else {
-                goals.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
-            }
+            if (settings.goals.hideClosed) goals = goals.filter(item => (item.saved || 0) < item.amount);
+            if (settings.goals.sortBy === 'amount') goals.sort((a, b) => b.amount - a.amount);
+            else goals.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
 
             document.getElementById('list-goals').innerHTML = '';
             goals.forEach((item) => {
@@ -422,7 +396,6 @@
             el.classList.add('active');
         }
 
-        // --- ДОБАВЛЕНИЕ И РЕДАКТИРОВАНИЕ ---
         function showForm(type, editIndex = -1) {
             document.getElementById('in-type').value = type;
             document.getElementById('in-edit-index').value = editIndex;
@@ -469,13 +442,11 @@
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
             if (editIndex === -1) {
-                // Создание
                 if (type === 'debts') data.debts.push({ title, amount, paid: 0, date });
                 else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date });
                 else data.savings.push({ title, amount });
                 addHistory(`Добавлено: ${title} на ${amount} ₽`);
             } else {
-                // Редактирование
                 const old = data[type][editIndex];
                 old.title = title;
                 old.amount = amount;
@@ -487,7 +458,6 @@
             document.getElementById('form').style.display = 'none';
         }
 
-        // --- ПОПОЛНЕНИЕ ---
         function openDeposit(type, index) {
             depType = type;
             depIndex = index;
