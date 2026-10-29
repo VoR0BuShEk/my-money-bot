@@ -218,7 +218,14 @@
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const STORAGE_KEY = 'myFinance_' + userId;
         
-        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [], history: [] };
+        // --- ИНИЦИАЛИЗАЦИЯ С ЗАЩИТОЙ ОТ ОШИБОК ---
+        let rawData = JSON.parse(localStorage.getItem(STORAGE_KEY)) || {};
+        let data = {
+            debts: rawData.debts || [],
+            goals: rawData.goals || [],
+            savings: rawData.savings || [],
+            history: rawData.history || [] // Если истории нет, создаем пустой массив
+        };
         
         let depType = '';
         let depIndex = -1;
@@ -231,17 +238,24 @@
             goals: { hideClosed: false, sortBy: 'date' }
         };
 
+        // Железобетонное сохранение
         function saveData() {
-            // ИСПРАВЛЕНО: Теперь данные точно сохраняются в LocalStorage
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            render();
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+                render();
+            } catch (e) {
+                tg.showAlert("Ошибка сохранения: " + e.message);
+            }
         }
 
         function addHistory(text) {
-            const now = new Date();
-            const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
-            data.history.unshift({ date: dateStr, text: text });
-            if (data.history.length > 50) data.history.pop();
+            try {
+                const now = new Date();
+                const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+                if (!data.history) data.history = [];
+                data.history.unshift({ date: dateStr, text: text });
+                if (data.history.length > 50) data.history.pop();
+            } catch (e) { console.log("Ошибка истории", e); }
         }
 
         function openCalendar() {
