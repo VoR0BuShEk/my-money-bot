@@ -161,10 +161,14 @@
         }
 
         /* Стили для выбора иконок */
-        .icon-picker { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .icon-picker { 
+            display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; 
+            position: relative; z-index: 10;
+        }
         .icon-picker button {
             font-size: 24px; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
             background: var(--card-bg); cursor: pointer; transition: 0.2s; flex-shrink: 0;
+            -webkit-tap-highlight-color: transparent;
         }
         .icon-picker button.selected { border-color: var(--btn); background: rgba(0, 122, 255, 0.1); }
     </style>
@@ -213,7 +217,6 @@
             <div class="chart-container">
                 <canvas id="myChart"></canvas>
             </div>
-
             <div class="stat-box">
                 <div class="stat-title">🔴 Общая сумма долгов</div>
                 <div class="stat-value" id="stat-debts" style="color: #ff3b30;">0 ₽</div>
@@ -226,7 +229,6 @@
                 <div class="stat-title">🏦 Свободные сбережения</div>
                 <div class="stat-value" id="stat-savings" style="color: #007aff;">0 ₽</div>
             </div>
-
             <button class="btn-add" style="background: #34c759; margin-top: 10px;" onclick="exportData()">📤 Экспорт данных</button>
         </div>
     </div>
@@ -249,16 +251,17 @@
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         
+        <!-- Выбор иконки -->
         <div class="icon-picker" id="icon-picker">
-            <button type="button" onclick="selectIcon('🏠')">🏠</button>
-            <button type="button" onclick="selectIcon('🚗')">🚗</button>
-            <button type="button" onclick="selectIcon('✈️')">✈️</button>
-            <button type="button" onclick="selectIcon('💳')">💳</button>
-            <button type="button" onclick="selectIcon('🛒')">🛒</button>
-            <button type="button" onclick="selectIcon('💰')">💰</button>
-            <button type="button" onclick="selectIcon('🎁')">🎁</button>
-            <button type="button" onclick="selectIcon('💊')">💊</button>
-            <button type="button" onclick="selectIcon('📚')">📚</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('🏠')">🏠</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('🚗')">🚗</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('✈️')">✈️</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('💳')">💳</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('🛒')">🛒</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('💰')">💰</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('🎁')">🎁</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('💊')">💊</button>
+            <button type="button" class="icon-btn" onclick="selectIcon('📚')">📚</button>
         </div>
 
         <input type="text" id="in-title" placeholder="Название">
@@ -350,12 +353,19 @@
             } catch (e) { console.log("Ошибка истории", e); }
         }
 
-        // ИКОНКИ
+        // --- ФУНКЦИЯ ВЫБОРА ИКОНКИ ---
         function selectIcon(icon) {
             selectedIcon = icon;
             document.getElementById('in-icon').value = icon;
-            document.querySelectorAll('#icon-picker button').forEach(btn => {
-                btn.classList.toggle('selected', btn.innerText === icon);
+            
+            // Подсвечиваем выбранную иконку
+            const buttons = document.querySelectorAll('.icon-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText.trim() === icon) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
             });
         }
 
@@ -571,7 +581,7 @@
             
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
-            // Сброс выбора иконки (по умолчанию 💳)
+            // Сброс выбора иконки
             selectedIcon = '💳';
             document.getElementById('in-icon').value = selectedIcon;
 
@@ -583,8 +593,6 @@
                     document.getElementById('in-date').value = item.date;
                     document.getElementById('date-btn').innerHTML = `Срок: ${item.date} <span>📅</span>`;
                 }
-                
-                // Восстанавливаем иконку, если она есть
                 if (item.icon) {
                     selectedIcon = item.icon;
                     document.getElementById('in-icon').value = selectedIcon;
@@ -601,9 +609,14 @@
                 document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
             }
 
-            // Подсвечиваем нужную иконку в панели
-            document.querySelectorAll('#icon-picker button').forEach(btn => {
-                btn.classList.toggle('selected', btn.innerText === selectedIcon);
+            // ПРИНУДИТЕЛЬНО ПОДСВЕЧИВАЕМ НУЖНУЮ ИКОНКУ
+            const buttons = document.querySelectorAll('.icon-btn');
+            buttons.forEach(btn => {
+                if (btn.innerText.trim() === selectedIcon) {
+                    btn.classList.add('selected');
+                } else {
+                    btn.classList.remove('selected');
+                }
             });
 
             document.getElementById('form').style.display = 'flex';
@@ -619,7 +632,7 @@
             const title = document.getElementById('in-title').value;
             const amount = parseFloat(document.getElementById('in-amount').value);
             const date = document.getElementById('in-date').value;
-            const icon = document.getElementById('in-icon').value || '💳'; // Защита от пустой иконки
+            const icon = document.getElementById('in-icon').value || '💳';
 
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
