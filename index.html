@@ -22,58 +22,36 @@
             padding-bottom: 90px; 
         }
 
-        h2 { 
-            margin: 0; 
-            padding: 20px 16px 10px 16px; 
-            font-size: 24px; 
-            text-align: center; 
-            color: #fff; 
-            text-shadow: 0 2px 6px rgba(0,0,0,0.8); 
-        }
+        h2 { margin: 0; padding: 20px 16px 10px 16px; font-size: 24px; text-align: center; color: #fff; text-shadow: 0 2px 6px rgba(0,0,0,0.8); }
 
         .tab { display: none; } 
         .tab.active { display: block; }
 
-        /* Слой для контента (кнопки и карточки) */
-        .tab-content {
-            position: relative;
-            z-index: 2; /* Контент всегда поверх фона */
-            padding: 16px;
-            min-height: calc(100vh - 150px);
-        }
+        .tab-content { position: relative; z-index: 2; padding: 16px; min-height: calc(100vh - 150px); }
 
-        /* Слой для фоновой картинки */
         .bg-layer {
-            position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            z-index: 1; /* Фон под контентом */
-            background-size: cover;
-            background-position: center;
-            background-attachment: fixed;
-            pointer-events: none; /* Клики проходят сквозь фон к кнопкам */
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0; z-index: 1;
+            background-size: cover; background-position: center; background-attachment: fixed; pointer-events: none;
         }
 
-        /* Картинки для фонов */
-        #tab-debts .bg-layer {
-            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/debts-bg.jpg'); 
+        #tab-debts .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/debts-bg.jpg'); }
+        #tab-goals .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/goals-bg.jpg'); }
+        #tab-savings .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/savings-bg.jpg'); }
+        #tab-stats .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/stats-bg.jpg'); }
+        #tab-history .bg-layer { background-image: linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)), url('images/stats-bg.jpg'); }
+
+        /* Панель инструментов (сортировка и скрытие) */
+        .toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+        .toolbar button {
+            flex: 1; padding: 8px; border-radius: 8px; border: none; background: rgba(255,255,255,0.9);
+            color: #333; font-size: 13px; font-weight: bold; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
         }
-        #tab-goals .bg-layer {
-            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/goals-bg.jpg'); 
-        }
-        #tab-savings .bg-layer {
-            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/savings-bg.jpg'); 
-        }
-        #tab-stats .bg-layer {
-            background-image: linear-gradient(rgba(0,0,0,0.3), rgba(0,0,0,0.3)), url('images/stats-bg.jpg'); 
-        }
+        .toolbar button.active { background: var(--btn); color: #fff; }
 
         .card { 
-            background: rgba(255, 255, 255, 0.95); /* Полупрозрачный белый фон */
-            backdrop-filter: blur(5px);
-            border-radius: 12px; 
-            padding: 16px; 
-            margin-bottom: 12px; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(5px);
+            border-radius: 12px; padding: 16px; margin-bottom: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: relative;
         }
 
         .card-title { font-weight: bold; font-size: 16px; color: #1c1c1e; }
@@ -83,63 +61,41 @@
         .amount-green { color: #34c759; }
         
         .btn-action { background: none; border: none; color: var(--btn); font-size: 14px; cursor: pointer; padding: 5px; font-weight: bold; }
-        .btn-del { background: none; border: none; color: #ff3b30; font-size: 16px; cursor: pointer; padding: 5px; }
+        .btn-icon { background: none; border: none; font-size: 16px; cursor: pointer; padding: 5px; }
 
         .bottom-nav { 
-            position: fixed; bottom: 0; left: 0; right: 0; 
-            background: #fff; 
-            display: flex; justify-content: space-around; 
-            padding: 10px 0 20px 0; 
-            box-shadow: 0 -2px 10px rgba(0,0,0,0.05);
-            z-index: 10;
+            position: fixed; bottom: 0; left: 0; right: 0; background: #fff; 
+            display: flex; justify-content: space-around; padding: 10px 0 20px 0; 
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.05); z-index: 10;
         }
         
-        .nav-item { text-align: center; font-size: 11px; color: #888; cursor: pointer; width: 25%; }
+        .nav-item { text-align: center; font-size: 11px; color: #888; cursor: pointer; width: 20%; }
         .nav-item.active { color: var(--btn); font-weight: bold; }
         .nav-icon { font-size: 20px; }
 
         .btn-add { 
-            background: var(--btn);
-            color: white; border: none; padding: 12px; border-radius: 10px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold;
-            position: relative; 
-            z-index: 10;
+            background: var(--btn); color: white; border: none; padding: 12px; border-radius: 10px; font-size: 16px; width: 100%; margin-bottom: 16px; cursor: pointer; font-weight: bold; position: relative; z-index: 10;
         }
 
         .modal { 
-            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; 
-            background: #fff;
-            padding: 20px; flex-direction: column; justify-content: center; overflow-y: auto; 
-            z-index: 1000;
+            display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: #fff;
+            padding: 20px; flex-direction: column; justify-content: center; overflow-y: auto; z-index: 1000;
         }
         
         .modal h3 { text-align: center; margin-bottom: 20px; }
-        .modal input { 
-            padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; 
-            border: 1px solid #ccc; border-radius: 8px; 
-        }
-        .modal button { 
-            padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; font-weight: bold;
-        }
+        .modal input { padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; }
+        .modal button { padding: 12px; font-size: 16px; border-radius: 8px; border: none; cursor: pointer; margin-bottom: 10px; width: 100%; font-weight: bold; }
         .btn-save { background: var(--btn); color: white; }
         .btn-cancel { background: #ff3b30; color: white; }
 
         .progress-bg { background: #eee; height: 8px; border-radius: 4px; margin-top: 8px; overflow: hidden; width: 100%; }
         .progress-bar { background: #34c759; height: 100%; border-radius: 4px; }
 
-        .stat-box { 
-            background: rgba(255,255,255,0.95); 
-            backdrop-filter: blur(5px);
-            padding: 20px; border-radius: 12px; margin-bottom: 12px; text-align: center; 
-            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-        }
+        .stat-box { background: rgba(255,255,255,0.95); backdrop-filter: blur(5px); padding: 20px; border-radius: 12px; margin-bottom: 12px; text-align: center; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
         .stat-title { font-size: 14px; color: #666; margin-bottom: 5px; }
         .stat-value { font-size: 24px; font-weight: bold; }
 
-        /* Календарь */
-        .date-btn { 
-            padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; 
-            border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; 
-        }
+        .date-btn { padding: 12px; margin-bottom: 12px; font-size: 16px; width: 100%; box-sizing: border-box; border: 1px solid #ccc; border-radius: 8px; background: #fff; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
         
         #calendar-overlay { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 2000; align-items: center; justify-content: center; }
         #calendar-box { background: #fff; padding: 20px; border-radius: 12px; width: 90%; max-width: 340px; }
@@ -151,6 +107,11 @@
         .cal-day.selected { background: var(--btn); color: white; font-weight: bold; }
         .cal-day.empty { cursor: default; }
         .cal-close { width: 100%; padding: 12px; margin-top: 20px; background: #f2f2f7; border: none; border-radius: 8px; color: #ff3b30; font-size: 16px; font-weight: bold; cursor: pointer; }
+
+        /* История */
+        .history-item { border-left: 4px solid var(--btn); padding-left: 10px; margin-bottom: 15px; }
+        .history-date { font-size: 11px; color: #888; margin-bottom: 2px; }
+        .history-text { font-size: 14px; }
     </style>
 </head>
 <body>
@@ -161,6 +122,10 @@
         <div class="bg-layer"></div>
         <div class="tab-content">
             <button class="btn-add" onclick="showForm('debts')">➕ Добавить долг</button>
+            <div class="toolbar">
+                <button onclick="toggleHideClosed('debts')" id="btn-hide-debts">Скрыть закрытые</button>
+                <button onclick="toggleSort('debts')" id="btn-sort-debts">Сортировка: по дате</button>
+            </div>
             <div id="list-debts"></div>
         </div>
     </div>
@@ -170,6 +135,10 @@
         <div class="bg-layer"></div>
         <div class="tab-content">
             <button class="btn-add" onclick="showForm('goals')">➕ Добавить цель</button>
+            <div class="toolbar">
+                <button onclick="toggleHideClosed('goals')" id="btn-hide-goals">Скрыть закрытые</button>
+                <button onclick="toggleSort('goals')" id="btn-sort-goals">Сортировка: по дате</button>
+            </div>
             <div id="list-goals"></div>
         </div>
     </div>
@@ -202,23 +171,31 @@
         </div>
     </div>
 
+    <!-- Вкладка История -->
+    <div id="tab-history" class="tab">
+        <div class="bg-layer"></div>
+        <div class="tab-content">
+            <div id="list-history"></div>
+        </div>
+    </div>
+
     <div class="bottom-nav">
         <div class="nav-item active" onclick="switchTab('debts', this)"><div class="nav-icon">💳</div><div>Долги</div></div>
         <div class="nav-item" onclick="switchTab('goals', this)"><div class="nav-icon">🎯</div><div>Цели</div></div>
-        <div class="nav-item" onclick="switchTab('savings', this)"><div class="nav-icon">🏦</div><div>Сбережения</div></div>
-        <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Статистика</div></div>
+        <div class="nav-item" onclick="switchTab('savings', this)"><div class="nav-icon">🏦</div><div>Сбереж.</div></div>
+        <div class="nav-item" onclick="switchTab('stats', this)"><div class="nav-icon">📊</div><div>Стата</div></div>
+        <div class="nav-item" onclick="switchTab('history', this)"><div class="nav-icon">📜</div><div>История</div></div>
     </div>
 
-    <!-- Форма добавления -->
+    <!-- Форма добавления/редактирования -->
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма">
-        
         <div class="date-btn" id="date-btn" onclick="openCalendar()">Срок: не выбран <span>📅</span></div>
         <input type="hidden" id="in-date" value="">
-
         <input type="hidden" id="in-type">
+        <input type="hidden" id="in-edit-index" value="-1">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="document.getElementById('form').style.display = 'none'">Отмена</button>
     </div>
@@ -250,7 +227,9 @@
         
         const userId = tg.initDataUnsafe?.user?.id || 'guest';
         const STORAGE_KEY = 'myFinance_' + userId;
-        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [] };
+        
+        // Инициализация базы данных (добавлен массив history)
+        let data = JSON.parse(localStorage.getItem(STORAGE_KEY)) || { debts: [], goals: [], savings: [], history: [] };
         
         let depType = '';
         let depIndex = -1;
@@ -258,21 +237,31 @@
         let currentDate = new Date();
         let selectedDate = null;
 
+        // Настройки сортировки и скрытия
+        let settings = {
+            debts: { hideClosed: false, sortBy: 'date' },
+            goals: { hideClosed: false, sortBy: 'date' }
+        };
+
+        function saveData() {
+            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            render();
+        }
+
+        function addHistory(text) {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('ru-RU') + ' ' + now.toLocaleTimeString('ru-RU', {hour: '2-digit', minute:'2-digit'});
+            data.history.unshift({ date: dateStr, text: text }); // Добавляем в начало
+            if (data.history.length > 50) data.history.pop(); // Храним только 50 последних
+        }
+
         // --- КАЛЕНДАРЬ ---
         function openCalendar() {
             document.getElementById('calendar-overlay').style.display = 'flex';
             renderCalendar();
         }
-
-        function closeCalendar() {
-            document.getElementById('calendar-overlay').style.display = 'none';
-        }
-
-        function changeMonth(offset) {
-            currentDate.setMonth(currentDate.getMonth() + offset);
-            renderCalendar();
-        }
-
+        function closeCalendar() { document.getElementById('calendar-overlay').style.display = 'none'; }
+        function changeMonth(offset) { currentDate.setMonth(currentDate.getMonth() + offset); renderCalendar(); }
         function renderCalendar() {
             const year = currentDate.getFullYear();
             const month = currentDate.getMonth();
@@ -289,34 +278,54 @@
             ['Пн', 'Вт', 'Ср', 'Чт', 'Пт', 'Сб', 'Вс'].forEach(d => {
                 daysContainer.innerHTML += `<div class="cal-day-name">${d}</div>`;
             });
-
-            for (let i = 0; i < startOffset; i++) {
-                daysContainer.innerHTML += `<div class="cal-day empty"></div>`;
-            }
-
+            for (let i = 0; i < startOffset; i++) { daysContainer.innerHTML += `<div class="cal-day empty"></div>`; }
             for (let i = 1; i <= daysInMonth; i++) {
                 const isSelected = selectedDate && selectedDate.getDate() === i && selectedDate.getMonth() === month && selectedDate.getFullYear() === year;
                 const cls = isSelected ? 'cal-day selected' : 'cal-day';
                 daysContainer.innerHTML += `<div class="${cls}" onclick="selectDate(${year}, ${month}, ${i})">${i}</div>`;
             }
         }
-
         function selectDate(year, month, day) {
             selectedDate = new Date(year, month, day);
             const dd = String(day).padStart(2, '0');
             const mm = String(month + 1).padStart(2, '0');
             const formatted = `${dd}.${mm}.${year}`;
-            
             document.getElementById('in-date').value = formatted;
             document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
             closeCalendar();
         }
 
+        // --- ФИЛЬТРАЦИЯ И СОРТИРОВКА ---
+        function toggleHideClosed(type) {
+            settings[type].hideClosed = !settings[type].hideClosed;
+            const btn = document.getElementById('btn-hide-' + type);
+            btn.classList.toggle('active', settings[type].hideClosed);
+            render();
+        }
+
+        function toggleSort(type) {
+            settings[type].sortBy = settings[type].sortBy === 'date' ? 'amount' : 'date';
+            const btn = document.getElementById('btn-sort-' + type);
+            btn.innerText = settings[type].sortBy === 'date' ? 'Сортировка: по дате' : 'Сортировка: по сумме';
+            render();
+        }
+
         // --- ОТРИСОВКА ---
         function render() {
-            // Долги
+            // --- ДОЛГИ ---
+            let debts = [...data.debts];
+            if (settings.debts.hideClosed) {
+                debts = debts.filter(item => (item.amount - (item.paid || 0)) > 0);
+            }
+            if (settings.debts.sortBy === 'amount') {
+                debts.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
+            } else {
+                debts.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
+            }
+
             document.getElementById('list-debts').innerHTML = '';
-            data.debts.forEach((item, i) => {
+            debts.forEach((item) => {
+                const originalIndex = data.debts.indexOf(item);
                 const left = item.amount - (item.paid || 0);
                 const percent = Math.min(Math.round(((item.paid || 0) / item.amount) * 100), 100);
                 document.getElementById('list-debts').innerHTML += `
@@ -324,21 +333,33 @@
                     <div style="display:flex; justify-content:space-between; width:100%;">
                         <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
                         <div style="text-align:right;">
-                            <div class="amount">${left} ₽</div>
+                            <div class="amount">${left > 0 ? left : 0} ₽</div>
                             <div class="card-sub">из ${item.amount}</div>
                         </div>
                     </div>
                     <div class="progress-bg" style="width:100%;"><div class="progress-bar" style="width: ${percent}%; background: #ff3b30;"></div></div>
-                    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                        ${left > 0 ? `<button class="btn-action" onclick="openDeposit('debts', ${i})">➖ Внести</button>` : ''}
-                        <button class="btn-del" onclick="del('debts', ${i})">🗑</button>
+                    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:5px;">
+                        ${left > 0 ? `<button class="btn-action" onclick="openDeposit('debts', ${originalIndex})">➖ Внести</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Закрыт</span>'}
+                        <button class="btn-icon" onclick="editItem('debts', ${originalIndex})">✏️</button>
+                        <button class="btn-icon" onclick="del('debts', ${originalIndex})">🗑</button>
                     </div>
                 </div>`;
             });
 
-            // Цели
+            // --- ЦЕЛИ ---
+            let goals = [...data.goals];
+            if (settings.goals.hideClosed) {
+                goals = goals.filter(item => (item.saved || 0) < item.amount);
+            }
+            if (settings.goals.sortBy === 'amount') {
+                goals.sort((a, b) => b.amount - a.amount);
+            } else {
+                goals.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
+            }
+
             document.getElementById('list-goals').innerHTML = '';
-            data.goals.forEach((item, i) => {
+            goals.forEach((item) => {
+                const originalIndex = data.goals.indexOf(item);
                 const percent = Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100);
                 document.getElementById('list-goals').innerHTML += `
                 <div class="card">
@@ -350,29 +371,48 @@
                         </div>
                     </div>
                     <div class="progress-bg" style="width:100%;"><div class="progress-bar" style="width: ${percent}%;"></div></div>
-                    <div style="display:flex; justify-content:flex-end; margin-top:8px;">
-                        <button class="btn-action" onclick="openDeposit('goals', ${i})">➕ Пополнить</button>
-                        <button class="btn-del" onclick="del('goals', ${i})">🗑</button>
+                    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:5px;">
+                        ${percent < 100 ? `<button class="btn-action" onclick="openDeposit('goals', ${originalIndex})">➕ Пополнить</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Достигнута</span>'}
+                        <button class="btn-icon" onclick="editItem('goals', ${originalIndex})">✏️</button>
+                        <button class="btn-icon" onclick="del('goals', ${originalIndex})">🗑</button>
                     </div>
                 </div>`;
             });
 
-            // Сбережения
+            // --- СБЕРЕЖЕНИЯ ---
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
-                <div class="card" style="display:flex; justify-content:space-between;">
+                <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
                     <div class="card-title">${item.title}</div>
-                    <div><span class="amount-green">+ ${item.amount} ₽</span> <button class="btn-del" onclick="del('savings', ${i})">🗑</button></div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span class="amount-green">+ ${item.amount} ₽</span>
+                        <button class="btn-icon" onclick="editItem('savings', ${i})">✏️</button>
+                        <button class="btn-icon" onclick="del('savings', ${i})">🗑</button>
+                    </div>
                 </div>`;
             });
 
+            // --- СТАТИСТИКА ---
             const tD = data.debts.reduce((s, i) => s + Math.max(0, i.amount - (i.paid || 0)), 0);
             const tG = data.goals.reduce((s, i) => s + (i.saved || 0), 0);
             const tS = data.savings.reduce((s, i) => s + i.amount, 0);
             document.getElementById('stat-debts').innerText = `${tD} ₽`;
             document.getElementById('stat-goals').innerText = `${tG} ₽`;
             document.getElementById('stat-savings').innerText = `${tS} ₽`;
+
+            // --- ИСТОРИЯ ---
+            document.getElementById('list-history').innerHTML = '';
+            if (data.history.length === 0) {
+                document.getElementById('list-history').innerHTML = '<p style="color:#fff; text-align:center;">История пока пуста</p>';
+            }
+            data.history.forEach(item => {
+                document.getElementById('list-history').innerHTML += `
+                <div class="history-item">
+                    <div class="history-date">${item.date}</div>
+                    <div class="history-text">${item.text}</div>
+                </div>`;
+            });
         }
 
         function switchTab(id, el) {
@@ -382,42 +422,72 @@
             el.classList.add('active');
         }
 
-        function showForm(type) {
+        // --- ДОБАВЛЕНИЕ И РЕДАКТИРОВАНИЕ ---
+        function showForm(type, editIndex = -1) {
             document.getElementById('in-type').value = type;
+            document.getElementById('in-edit-index').value = editIndex;
+            
+            const isEdit = editIndex !== -1;
+            document.getElementById('form-title').innerText = isEdit ? 'Редактировать' : 'Новая запись';
             
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
-            selectedDate = new Date();
-            const dd = String(selectedDate.getDate()).padStart(2, '0');
-            const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-            const yyyy = selectedDate.getFullYear();
-            const formatted = `${dd}.${mm}.${yyyy}`;
-            
-            document.getElementById('in-date').value = formatted;
-            document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+            if (isEdit) {
+                const item = data[type][editIndex];
+                document.getElementById('in-title').value = item.title;
+                document.getElementById('in-amount').value = item.amount;
+                if (item.date) {
+                    document.getElementById('in-date').value = item.date;
+                    document.getElementById('date-btn').innerHTML = `Срок: ${item.date} <span>📅</span>`;
+                }
+            } else {
+                document.getElementById('in-title').value = '';
+                document.getElementById('in-amount').value = '';
+                selectedDate = new Date();
+                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const yyyy = selectedDate.getFullYear();
+                const formatted = `${dd}.${mm}.${yyyy}`;
+                document.getElementById('in-date').value = formatted;
+                document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+            }
 
             document.getElementById('form').style.display = 'flex';
         }
 
+        function editItem(type, index) {
+            showForm(type, index);
+        }
+
         function saveItem() {
             const type = document.getElementById('in-type').value;
+            const editIndex = parseInt(document.getElementById('in-edit-index').value);
             const title = document.getElementById('in-title').value;
             const amount = parseFloat(document.getElementById('in-amount').value);
             const date = document.getElementById('in-date').value;
 
             if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
 
-            if (type === 'debts') data.debts.push({ title, amount, paid: 0, date });
-            else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date });
-            else data.savings.push({ title, amount });
+            if (editIndex === -1) {
+                // Создание
+                if (type === 'debts') data.debts.push({ title, amount, paid: 0, date });
+                else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date });
+                else data.savings.push({ title, amount });
+                addHistory(`Добавлено: ${title} на ${amount} ₽`);
+            } else {
+                // Редактирование
+                const old = data[type][editIndex];
+                old.title = title;
+                old.amount = amount;
+                if (type !== 'savings') old.date = date;
+                addHistory(`Изменено: ${title}`);
+            }
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-            document.getElementById('in-title').value = '';
-            document.getElementById('in-amount').value = '';
+            saveData();
             document.getElementById('form').style.display = 'none';
-            render();
         }
 
+        // --- ПОПОЛНЕНИЕ ---
         function openDeposit(type, index) {
             depType = type;
             depIndex = index;
@@ -430,22 +500,26 @@
             const amount = parseFloat(document.getElementById('dep-amount').value);
             if (isNaN(amount) || amount <= 0) return;
 
+            const item = data[depType][depIndex];
+
             if (depType === 'debts') {
-                data.debts[depIndex].paid = (data.debts[depIndex].paid || 0) + amount;
+                item.paid = (item.paid || 0) + amount;
+                addHistory(`Оплата долга "${item.title}" на ${amount} ₽`);
             } else {
-                data.goals[depIndex].saved = (data.goals[depIndex].saved || 0) + amount;
+                item.saved = (item.saved || 0) + amount;
+                addHistory(`Пополнение цели "${item.title}" на ${amount} ₽`);
             }
 
-            localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+            saveData();
             document.getElementById('deposit-form').style.display = 'none';
-            render();
         }
 
         function del(type, index) {
             if (confirm("Удалить?")) {
+                const title = data[type][index].title;
                 data[type].splice(index, 1);
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-                render();
+                addHistory(`Удалено: ${title}`);
+                saveData();
             }
         }
 
