@@ -17,7 +17,6 @@
             --border: #e0e0e0;
         }
 
-        /* Темная тема */
         body.dark-theme {
             --bg: #121212;
             --text: #ffffff;
@@ -81,7 +80,7 @@
 
         @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
 
-        .card-title { font-weight: bold; font-size: 16px; color: var(--text); }
+        .card-title { font-weight: bold; font-size: 16px; color: var(--text); display: flex; align-items: center; gap: 6px; }
         .card-sub { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
         
         .amount { font-weight: bold; color: #ff3b30; }
@@ -160,6 +159,14 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1); border: 1px solid var(--border);
             position: relative; height: 250px; width: 100%; box-sizing: border-box;
         }
+
+        /* Стили для выбора иконок */
+        .icon-picker { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; }
+        .icon-picker button {
+            font-size: 24px; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
+            background: var(--card-bg); cursor: pointer; transition: 0.2s; flex-shrink: 0;
+        }
+        .icon-picker button.selected { border-color: var(--btn); background: rgba(0, 122, 255, 0.1); }
     </style>
 </head>
 <body>
@@ -219,6 +226,8 @@
                 <div class="stat-title">🏦 Свободные сбережения</div>
                 <div class="stat-value" id="stat-savings" style="color: #007aff;">0 ₽</div>
             </div>
+
+            <button class="btn-add" style="background: #34c759; margin-top: 10px;" onclick="exportData()">📤 Экспорт данных</button>
         </div>
     </div>
 
@@ -239,12 +248,26 @@
 
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
+        
+        <div class="icon-picker" id="icon-picker">
+            <button type="button" onclick="selectIcon('🏠')">🏠</button>
+            <button type="button" onclick="selectIcon('🚗')">🚗</button>
+            <button type="button" onclick="selectIcon('✈️')">✈️</button>
+            <button type="button" onclick="selectIcon('💳')">💳</button>
+            <button type="button" onclick="selectIcon('🛒')">🛒</button>
+            <button type="button" onclick="selectIcon('💰')">💰</button>
+            <button type="button" onclick="selectIcon('🎁')">🎁</button>
+            <button type="button" onclick="selectIcon('💊')">💊</button>
+            <button type="button" onclick="selectIcon('📚')">📚</button>
+        </div>
+
         <input type="text" id="in-title" placeholder="Название">
         <input type="number" id="in-amount" placeholder="Сумма">
         <div class="date-btn" id="date-btn" onclick="openCalendar()">Срок: не выбран <span>📅</span></div>
         <input type="hidden" id="in-date" value="">
         <input type="hidden" id="in-type">
         <input type="hidden" id="in-edit-index" value="-1">
+        <input type="hidden" id="in-icon" value="💳">
         <button class="btn-save" onclick="saveItem()">Сохранить</button>
         <button class="btn-cancel" onclick="document.getElementById('form').style.display = 'none'">Отмена</button>
     </div>
@@ -288,6 +311,7 @@
         
         let currentDate = new Date();
         let selectedDate = null;
+        let selectedIcon = '💳';
 
         let settings = {
             debts: { hideClosed: false, sortBy: 'date' },
@@ -296,12 +320,11 @@
 
         let myChart = null;
 
-        // --- ТЕМА ---
         function toggleTheme() {
             document.body.classList.toggle('dark-theme');
             const isDark = document.body.classList.contains('dark-theme');
             localStorage.setItem('theme_' + userId, isDark ? 'dark' : 'light');
-            if (myChart) renderChart(); // Перерисовываем график с новыми цветами
+            if (myChart) renderChart();
         }
 
         if (localStorage.getItem('theme_' + userId) === 'dark') {
@@ -327,7 +350,15 @@
             } catch (e) { console.log("Ошибка истории", e); }
         }
 
-        // --- КАЛЕНДАРЬ ---
+        // ИКОНКИ
+        function selectIcon(icon) {
+            selectedIcon = icon;
+            document.getElementById('in-icon').value = icon;
+            document.querySelectorAll('#icon-picker button').forEach(btn => {
+                btn.classList.toggle('selected', btn.innerText === icon);
+            });
+        }
+
         function openCalendar() {
             document.getElementById('calendar-overlay').style.display = 'flex';
             renderCalendar();
@@ -367,7 +398,6 @@
             closeCalendar();
         }
 
-        // --- ФИЛЬТРАЦИЯ ---
         function toggleHideClosed(type) {
             settings[type].hideClosed = !settings[type].hideClosed;
             document.getElementById('btn-hide-' + type).classList.toggle('active', settings[type].hideClosed);
@@ -380,10 +410,9 @@
             render();
         }
 
-        // --- ГРАФИК ---
         function renderChart() {
             const canvas = document.getElementById('myChart');
-            if (!canvas) return; // Защита
+            if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
             let activeDebts = data.debts.filter(d => (d.amount - (d.paid || 0)) > 0);
@@ -423,9 +452,7 @@
             });
         }
 
-        // --- ОТРИСОВКА ---
         function render() {
-            // --- ДОЛГИ ---
             let debts = [...data.debts];
             if (settings.debts.hideClosed) debts = debts.filter(item => (item.amount - (item.paid || 0)) > 0);
             if (settings.debts.sortBy === 'amount') debts.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
@@ -439,7 +466,10 @@
                 document.getElementById('list-debts').innerHTML += `
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
+                        <div>
+                            <div class="card-title"><span>${item.icon || '💳'}</span> ${item.title}</div>
+                            <div class="card-sub">${item.date || ''}</div>
+                        </div>
                         <div style="text-align:right;">
                             <div class="amount">${left > 0 ? left : 0} ₽</div>
                             <div class="card-sub">из ${item.amount}</div>
@@ -454,7 +484,6 @@
                 </div>`;
             });
 
-            // --- ЦЕЛИ ---
             let goals = [...data.goals];
             if (settings.goals.hideClosed) goals = goals.filter(item => (item.saved || 0) < item.amount);
             if (settings.goals.sortBy === 'amount') goals.sort((a, b) => b.amount - a.amount);
@@ -467,7 +496,10 @@
                 document.getElementById('list-goals').innerHTML += `
                 <div class="card">
                     <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div><div class="card-title">${item.title}</div><div class="card-sub">${item.date || ''}</div></div>
+                        <div>
+                            <div class="card-title"><span>${item.icon || '🎯'}</span> ${item.title}</div>
+                            <div class="card-sub">${item.date || ''}</div>
+                        </div>
                         <div style="text-align:right;">
                             <div class="amount-green">${item.saved || 0} ₽</div>
                             <div class="card-sub">из ${item.amount}</div>
@@ -482,12 +514,11 @@
                 </div>`;
             });
 
-            // --- СБЕРЕЖЕНИЯ ---
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
                 <div class="card" style="display:flex; justify-content:space-between; align-items:center;">
-                    <div class="card-title">${item.title}</div>
+                    <div class="card-title"><span>${item.icon || '🏦'}</span> ${item.title}</div>
                     <div style="display:flex; align-items:center; gap:10px;">
                         <span class="amount-green">+ ${item.amount} ₽</span>
                         <button class="btn-icon" onclick="editItem('savings', ${i})">✏️</button>
@@ -496,7 +527,6 @@
                 </div>`;
             });
 
-            // --- СТАТИСТИКА ---
             const tD = data.debts.reduce((s, i) => s + Math.max(0, i.amount - (i.paid || 0)), 0);
             const tG = data.goals.reduce((s, i) => s + (i.saved || 0), 0);
             const tS = data.savings.reduce((s, i) => s + i.amount, 0);
@@ -504,7 +534,6 @@
             document.getElementById('stat-goals').innerText = `${tG} ₽`;
             document.getElementById('stat-savings').innerText = `${tS} ₽`;
 
-            // --- ИСТОРИЯ ---
             document.getElementById('list-history').innerHTML = '';
             if (data.history.length === 0) {
                 document.getElementById('list-history').innerHTML = '<p style="color:#fff; text-align:center; font-size:16px;">История пока пуста</p>';
@@ -517,7 +546,6 @@
                 </div>`;
             });
 
-            // Перерисовываем график, если мы на вкладке статистики
             if (document.getElementById('tab-stats').classList.contains('active')) {
                 renderChart();
             }
@@ -530,7 +558,6 @@
             el.classList.add('active');
 
             if (id === 'stats') {
-                // Небольшая задержка, чтобы контейнер успел получить размеры
                 setTimeout(renderChart, 50);
             }
         }
@@ -544,6 +571,10 @@
             
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
+            // Сброс выбора иконки (по умолчанию 💳)
+            selectedIcon = '💳';
+            document.getElementById('in-icon').value = selectedIcon;
+
             if (isEdit) {
                 const item = data[type][editIndex];
                 document.getElementById('in-title').value = item.title;
@@ -552,87 +583,6 @@
                     document.getElementById('in-date').value = item.date;
                     document.getElementById('date-btn').innerHTML = `Срок: ${item.date} <span>📅</span>`;
                 }
-            } else {
-                document.getElementById('in-title').value = '';
-                document.getElementById('in-amount').value = '';
-                selectedDate = new Date();
-                const dd = String(selectedDate.getDate()).padStart(2, '0');
-                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
-                const yyyy = selectedDate.getFullYear();
-                const formatted = `${dd}.${mm}.${yyyy}`;
-                document.getElementById('in-date').value = formatted;
-                document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
-            }
-
-            document.getElementById('form').style.display = 'flex';
-        }
-
-        function editItem(type, index) {
-            showForm(type, index);
-        }
-
-        function saveItem() {
-            const type = document.getElementById('in-type').value;
-            const editIndex = parseInt(document.getElementById('in-edit-index').value);
-            const title = document.getElementById('in-title').value;
-            const amount = parseFloat(document.getElementById('in-amount').value);
-            const date = document.getElementById('in-date').value;
-
-            if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
-
-            if (editIndex === -1) {
-                if (type === 'debts') data.debts.push({ title, amount, paid: 0, date });
-                else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date });
-                else data.savings.push({ title, amount });
-                addHistory(`Добавлено: ${title} на ${amount} ₽`);
-            } else {
-                const old = data[type][editIndex];
-                old.title = title;
-                old.amount = amount;
-                if (type !== 'savings') old.date = date;
-                addHistory(`Изменено: ${title}`);
-            }
-
-            saveData();
-            document.getElementById('form').style.display = 'none';
-        }
-
-        function openDeposit(type, index) {
-            depType = type;
-            depIndex = index;
-            document.getElementById('dep-title').innerText = type === 'debts' ? 'Внести платеж' : 'Пополнить цель';
-            document.getElementById('dep-amount').value = '';
-            document.getElementById('deposit-form').style.display = 'flex';
-        }
-
-        function depositItem() {
-            const amount = parseFloat(document.getElementById('dep-amount').value);
-            if (isNaN(amount) || amount <= 0) return;
-
-            const item = data[depType][depIndex];
-
-            if (depType === 'debts') {
-                item.paid = (item.paid || 0) + amount;
-                addHistory(`Оплата долга "${item.title}" на ${amount} ₽`);
-            } else {
-                item.saved = (item.saved || 0) + amount;
-                addHistory(`Пополнение цели "${item.title}" на ${amount} ₽`);
-            }
-
-            saveData();
-            document.getElementById('deposit-form').style.display = 'none';
-        }
-
-        function del(type, index) {
-            if (confirm("Удалить?")) {
-                const title = data[type][index].title;
-                data[type].splice(index, 1);
-                addHistory(`Удалено: ${title}`);
-                saveData();
-            }
-        }
-
-        render();
-    </script>
-</body>
-</html>
+                
+                // Восстанавливаем иконку, если она есть
+                if (item.icon) {
