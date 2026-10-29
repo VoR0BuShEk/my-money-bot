@@ -586,3 +586,146 @@
                 
                 // Восстанавливаем иконку, если она есть
                 if (item.icon) {
+                    selectedIcon = item.icon;
+                    document.getElementById('in-icon').value = selectedIcon;
+                }
+            } else {
+                document.getElementById('in-title').value = '';
+                document.getElementById('in-amount').value = '';
+                selectedDate = new Date();
+                const dd = String(selectedDate.getDate()).padStart(2, '0');
+                const mm = String(selectedDate.getMonth() + 1).padStart(2, '0');
+                const yyyy = selectedDate.getFullYear();
+                const formatted = `${dd}.${mm}.${yyyy}`;
+                document.getElementById('in-date').value = formatted;
+                document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
+            }
+
+            // Подсвечиваем нужную иконку в панели
+            document.querySelectorAll('#icon-picker button').forEach(btn => {
+                btn.classList.toggle('selected', btn.innerText === selectedIcon);
+            });
+
+            document.getElementById('form').style.display = 'flex';
+        }
+
+        function editItem(type, index) {
+            showForm(type, index);
+        }
+
+        function saveItem() {
+            const type = document.getElementById('in-type').value;
+            const editIndex = parseInt(document.getElementById('in-edit-index').value);
+            const title = document.getElementById('in-title').value;
+            const amount = parseFloat(document.getElementById('in-amount').value);
+            const date = document.getElementById('in-date').value;
+            const icon = document.getElementById('in-icon').value || '💳'; // Защита от пустой иконки
+
+            if (!title || isNaN(amount)) { tg.showAlert("Заполните поля!"); return; }
+
+            if (editIndex === -1) {
+                if (type === 'debts') data.debts.push({ title, amount, paid: 0, date, icon });
+                else if (type === 'goals') data.goals.push({ title, amount, saved: 0, date, icon });
+                else data.savings.push({ title, amount, icon });
+                addHistory(`Добавлено: ${title} на ${amount} ₽`);
+            } else {
+                const old = data[type][editIndex];
+                old.title = title;
+                old.amount = amount;
+                old.icon = icon;
+                if (type !== 'savings') old.date = date;
+                addHistory(`Изменено: ${title}`);
+            }
+
+            saveData();
+            document.getElementById('form').style.display = 'none';
+        }
+
+        function openDeposit(type, index) {
+            depType = type;
+            depIndex = index;
+            document.getElementById('dep-title').innerText = type === 'debts' ? 'Внести платеж' : 'Пополнить цель';
+            document.getElementById('dep-amount').value = '';
+            document.getElementById('deposit-form').style.display = 'flex';
+        }
+
+        function depositItem() {
+            const amount = parseFloat(document.getElementById('dep-amount').value);
+            if (isNaN(amount) || amount <= 0) return;
+
+            const item = data[depType][depIndex];
+
+            if (depType === 'debts') {
+                item.paid = (item.paid || 0) + amount;
+                addHistory(`Оплата долга "${item.title}" на ${amount} ₽`);
+            } else {
+                item.saved = (item.saved || 0) + amount;
+                addHistory(`Пополнение цели "${item.title}" на ${amount} ₽`);
+            }
+
+            saveData();
+            document.getElementById('deposit-form').style.display = 'none';
+        }
+
+        function del(type, index) {
+            if (confirm("Удалить?")) {
+                const title = data[type][index].title;
+                data[type].splice(index, 1);
+                addHistory(`Удалено: ${title}`);
+                saveData();
+            }
+        }
+
+        function exportData() {
+            let report = "📊 МОЙ ФИНАНСОВЫЙ ОТЧЕТ\n";
+            report += "Дата: " + new Date().toLocaleDateString('ru-RU') + "\n\n";
+
+            report += "🔴 ДОЛГИ:\n";
+            if (data.debts.length === 0) report += " - Нет долгов\n";
+            data.debts.forEach(d => {
+                const left = d.amount - (d.paid || 0);
+                report += `- ${d.icon || '💳'} ${d.title}: ${left} ₽ (из ${d.amount} ₽) | Срок: ${d.date || 'не указан'}\n`;
+            });
+
+            report += "\n🎯 ЦЕЛИ:\n";
+            if (data.goals.length === 0) report += " - Нет целей\n";
+            data.goals.forEach(g => {
+                report += `- ${g.icon || '🎯'} ${g.title}: ${g.saved || 0} ₽ (из ${g.amount} ₽) | Срок: ${g.date || 'не указан'}\n`;
+            });
+
+            report += "\n🏦 СБЕРЕЖЕНИЯ:\n";
+            if (data.savings.length === 0) report += " - Нет сбережений\n";
+            data.savings.forEach(s => {
+                report += `- ${s.icon || '🏦'} ${s.title}: ${s.amount} ₽\n`;
+            });
+
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Мой финансовый отчет',
+                    text: report
+                }).catch(err => {
+                    copyToClipboard(report);
+                });
+            } else {
+                copyToClipboard(report);
+            }
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            try {
+                document.execCommand('copy');
+                tg.showAlert("Текст отчета скопирован в буфер обмена!");
+            } catch (err) {
+                tg.showAlert("Не удалось скопировать текст.");
+            }
+            document.body.removeChild(textarea);
+        }
+
+        render();
+    </script>
+</body>
+</html>
