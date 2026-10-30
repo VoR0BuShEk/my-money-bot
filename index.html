@@ -71,14 +71,34 @@
         }
         .toolbar button.active { background: var(--btn); color: #fff; border-color: var(--btn); }
 
+        /* СТИЛИ ДЛЯ ГРУПП */
+        .group-header {
+            background: var(--card-bg);
+            border-radius: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            font-weight: bold;
+            color: var(--text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            border: 1px solid var(--border);
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+        .group-header .arrow { transition: 0.3s; font-size: 12px; color: var(--text-sec); }
+        .group-header.open .arrow { transform: rotate(180deg); }
+        
+        .group-content { display: none; padding-left: 10px; margin-bottom: 15px; }
+        .group-content.open { display: block; animation: slideUp 0.3s ease-out; }
+
         .card { 
             background: var(--card-bg); border-radius: 12px; padding: 16px; margin-bottom: 12px; 
             box-shadow: 0 2px 8px rgba(0,0,0,0.1); position: relative;
             border: 1px solid var(--border);
-            animation: slideUp 0.3s ease-out forwards; opacity: 0; transform: translateY(10px);
         }
 
-        @keyframes slideUp { to { opacity: 1; transform: translateY(0); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
 
         .card-title { font-weight: bold; font-size: 16px; color: var(--text); display: flex; align-items: center; gap: 6px; }
         .card-sub { font-size: 13px; color: var(--text-sec); margin-top: 4px; }
@@ -160,15 +180,10 @@
             position: relative; height: 250px; width: 100%; box-sizing: border-box;
         }
 
-        /* Стили для выбора иконок */
-        .icon-picker { 
-            display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; 
-            position: relative; z-index: 10;
-        }
+        .icon-picker { display: flex; gap: 10px; margin-bottom: 15px; overflow-x: auto; padding-bottom: 5px; position: relative; z-index: 10; }
         .icon-picker button {
             font-size: 24px; padding: 10px; border-radius: 10px; border: 2px solid var(--border);
-            background: var(--card-bg); cursor: pointer; transition: 0.2s; flex-shrink: 0;
-            -webkit-tap-highlight-color: transparent;
+            background: var(--card-bg); cursor: pointer; transition: 0.2s; flex-shrink: 0; -webkit-tap-highlight-color: transparent;
         }
         .icon-picker button.selected { border-color: var(--btn); background: rgba(0, 122, 255, 0.1); }
     </style>
@@ -251,7 +266,6 @@
     <div id="form" class="modal">
         <h3 id="form-title">Новая запись</h3>
         
-        <!-- Выбор иконки -->
         <div class="icon-picker" id="icon-picker">
             <button type="button" class="icon-btn" onclick="selectIcon('🏠')">🏠</button>
             <button type="button" class="icon-btn" onclick="selectIcon('🚗')">🚗</button>
@@ -322,7 +336,9 @@
         };
 
         let myChart = null;
+        let openGroups = {}; // Храним состояние открытых групп
 
+        // --- ТЕМА ---
         function toggleTheme() {
             document.body.classList.toggle('dark-theme');
             const isDark = document.body.classList.contains('dark-theme');
@@ -353,12 +369,10 @@
             } catch (e) { console.log("Ошибка истории", e); }
         }
 
-        // --- ФУНКЦИЯ ВЫБОРА ИКОНКИ ---
+        // --- ИКОНКИ ---
         function selectIcon(icon) {
             selectedIcon = icon;
             document.getElementById('in-icon').value = icon;
-            
-            // Подсвечиваем выбранную иконку
             const buttons = document.querySelectorAll('.icon-btn');
             buttons.forEach(btn => {
                 if (btn.innerText.trim() === icon) {
@@ -369,6 +383,7 @@
             });
         }
 
+        // --- КАЛЕНДАРЬ ---
         function openCalendar() {
             document.getElementById('calendar-overlay').style.display = 'flex';
             renderCalendar();
@@ -408,6 +423,7 @@
             closeCalendar();
         }
 
+        // --- ФИЛЬТРАЦИЯ ---
         function toggleHideClosed(type) {
             settings[type].hideClosed = !settings[type].hideClosed;
             document.getElementById('btn-hide-' + type).classList.toggle('active', settings[type].hideClosed);
@@ -418,6 +434,46 @@
             settings[type].sortBy = settings[type].sortBy === 'date' ? 'amount' : 'date';
             document.getElementById('btn-sort-' + type).innerText = settings[type].sortBy === 'date' ? 'Сортировка: по дате' : 'Сортировка: по сумме';
             render();
+        }
+
+        // --- ГРУППИРОВКА ---
+        function toggleGroup(groupId) {
+            openGroups[groupId] = !openGroups[groupId];
+            render();
+        }
+
+        // Вспомогательная функция для отрисовки одной карточки (чтобы не дублировать код)
+        function renderCardHtml(item, type, originalIndex, isGoal = false) {
+            const left = item.amount - (item.paid || 0);
+            const percent = isGoal 
+                ? Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100)
+                : Math.min(Math.round(((item.paid || 0) / item.amount) * 100), 100);
+            
+            const valDisplay = isGoal ? (item.saved || 0) : (left > 0 ? left : 0);
+            const colorClass = isGoal ? 'amount-green' : 'amount';
+            const btnAction = isGoal 
+                ? (percent < 100 ? `<button class="btn-action" onclick="openDeposit('goals', ${originalIndex})">➕ Пополнить</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Достигнута</span>')
+                : (left > 0 ? `<button class="btn-action" onclick="openDeposit('debts', ${originalIndex})">➖ Внести</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Закрыт</span>');
+
+            return `
+            <div class="card">
+                <div style="display:flex; justify-content:space-between; width:100%;">
+                    <div>
+                        <div class="card-title"><span>${item.icon || (isGoal ? '🎯' : '💳')}</span> ${item.title}</div>
+                        <div class="card-sub">${item.date || ''}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="${colorClass}">${valDisplay} ₽</div>
+                        <div class="card-sub">из ${item.amount}</div>
+                    </div>
+                </div>
+                <div class="progress-bg" style="width:100%;"><div class="progress-bar" style="width: ${percent}%; ${!isGoal ? 'background: #ff3b30;' : ''}"></div></div>
+                <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:5px;">
+                    ${btnAction}
+                    <button class="btn-icon" onclick="editItem('${type}', ${originalIndex})">✏️</button>
+                    <button class="btn-icon" onclick="del('${type}', ${originalIndex})">🗑</button>
+                </div>
+            </div>`;
         }
 
         function renderChart() {
@@ -463,67 +519,81 @@
         }
 
         function render() {
+            // --- ДОЛГИ ---
             let debts = [...data.debts];
             if (settings.debts.hideClosed) debts = debts.filter(item => (item.amount - (item.paid || 0)) > 0);
-            if (settings.debts.sortBy === 'amount') debts.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
-            else debts.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
+            
+            // Группировка долгов по иконке
+            let debtGroups = {};
+            debts.forEach(item => {
+                const icon = item.icon || '💳';
+                if (!debtGroups[icon]) debtGroups[icon] = [];
+                debtGroups[icon].push(item);
+            });
 
             document.getElementById('list-debts').innerHTML = '';
-            debts.forEach((item) => {
-                const originalIndex = data.debts.indexOf(item);
-                const left = item.amount - (item.paid || 0);
-                const percent = Math.min(Math.round(((item.paid || 0) / item.amount) * 100), 100);
+            for (const icon in debtGroups) {
+                const groupId = 'debt_' + icon;
+                const isOpen = openGroups[groupId] || false;
+                
+                // Заголовок группы
                 document.getElementById('list-debts').innerHTML += `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div>
-                            <div class="card-title"><span>${item.icon || '💳'}</span> ${item.title}</div>
-                            <div class="card-sub">${item.date || ''}</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div class="amount">${left > 0 ? left : 0} ₽</div>
-                            <div class="card-sub">из ${item.amount}</div>
-                        </div>
-                    </div>
-                    <div class="progress-bg" style="width:100%;"><div class="progress-bar" style="width: ${percent}%; background: #ff3b30;"></div></div>
-                    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:5px;">
-                        ${left > 0 ? `<button class="btn-action" onclick="openDeposit('debts', ${originalIndex})">➖ Внести</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Закрыт</span>'}
-                        <button class="btn-icon" onclick="editItem('debts', ${originalIndex})">✏️</button>
-                        <button class="btn-icon" onclick="del('debts', ${originalIndex})">🗑</button>
-                    </div>
-                </div>`;
-            });
+                <div class="group-header ${isOpen ? 'open' : ''}" onclick="toggleGroup('${groupId}')">
+                    <span>${icon} Категория (${debtGroups[icon].length})</span>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="group-content ${isOpen ? 'open' : ''}">`;
+                
+                // Сортируем внутри группы
+                let groupItems = [...debtGroups[icon]];
+                if (settings.debts.sortBy === 'amount') groupItems.sort((a, b) => (b.amount - (b.paid || 0)) - (a.amount - (a.paid || 0)));
+                else groupItems.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
 
+                groupItems.forEach(item => {
+                    const originalIndex = data.debts.indexOf(item);
+                    document.getElementById('list-debts').innerHTML += renderCardHtml(item, 'debts', originalIndex, false);
+                });
+                
+                document.getElementById('list-debts').innerHTML += `</div>`;
+            }
+
+            // --- ЦЕЛИ ---
             let goals = [...data.goals];
             if (settings.goals.hideClosed) goals = goals.filter(item => (item.saved || 0) < item.amount);
-            if (settings.goals.sortBy === 'amount') goals.sort((a, b) => b.amount - a.amount);
-            else goals.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
-
-            document.getElementById('list-goals').innerHTML = '';
-            goals.forEach((item) => {
-                const originalIndex = data.goals.indexOf(item);
-                const percent = Math.min(Math.round(((item.saved || 0) / item.amount) * 100), 100);
-                document.getElementById('list-goals').innerHTML += `
-                <div class="card">
-                    <div style="display:flex; justify-content:space-between; width:100%;">
-                        <div>
-                            <div class="card-title"><span>${item.icon || '🎯'}</span> ${item.title}</div>
-                            <div class="card-sub">${item.date || ''}</div>
-                        </div>
-                        <div style="text-align:right;">
-                            <div class="amount-green">${item.saved || 0} ₽</div>
-                            <div class="card-sub">из ${item.amount}</div>
-                        </div>
-                    </div>
-                    <div class="progress-bg" style="width:100%;"><div class="progress-bar" style="width: ${percent}%;"></div></div>
-                    <div style="display:flex; justify-content:flex-end; align-items:center; margin-top:8px; gap:5px;">
-                        ${percent < 100 ? `<button class="btn-action" onclick="openDeposit('goals', ${originalIndex})">➕ Пополнить</button>` : '<span style="color:#34c759; font-weight:bold; font-size:14px;">Достигнута</span>'}
-                        <button class="btn-icon" onclick="editItem('goals', ${originalIndex})">✏️</button>
-                        <button class="btn-icon" onclick="del('goals', ${originalIndex})">🗑</button>
-                    </div>
-                </div>`;
+            
+            // Группировка целей по иконке
+            let goalGroups = {};
+            goals.forEach(item => {
+                const icon = item.icon || '🎯';
+                if (!goalGroups[icon]) goalGroups[icon] = [];
+                goalGroups[icon].push(item);
             });
 
+            document.getElementById('list-goals').innerHTML = '';
+            for (const icon in goalGroups) {
+                const groupId = 'goal_' + icon;
+                const isOpen = openGroups[groupId] || false;
+                
+                document.getElementById('list-goals').innerHTML += `
+                <div class="group-header ${isOpen ? 'open' : ''}" onclick="toggleGroup('${groupId}')">
+                    <span>${icon} Категория (${goalGroups[icon].length})</span>
+                    <span class="arrow">▼</span>
+                </div>
+                <div class="group-content ${isOpen ? 'open' : ''}">`;
+                
+                let groupItems = [...goalGroups[icon]];
+                if (settings.goals.sortBy === 'amount') groupItems.sort((a, b) => b.amount - a.amount);
+                else groupItems.sort((a, b) => (a.date || '0').localeCompare(b.date || '0'));
+
+                groupItems.forEach(item => {
+                    const originalIndex = data.goals.indexOf(item);
+                    document.getElementById('list-goals').innerHTML += renderCardHtml(item, 'goals', originalIndex, true);
+                });
+                
+                document.getElementById('list-goals').innerHTML += `</div>`;
+            }
+
+            // --- СБЕРЕЖЕНИЯ (без группировки для простоты) ---
             document.getElementById('list-savings').innerHTML = '';
             data.savings.forEach((item, i) => {
                 document.getElementById('list-savings').innerHTML += `
@@ -537,6 +607,7 @@
                 </div>`;
             });
 
+            // Статистика
             const tD = data.debts.reduce((s, i) => s + Math.max(0, i.amount - (i.paid || 0)), 0);
             const tG = data.goals.reduce((s, i) => s + (i.saved || 0), 0);
             const tS = data.savings.reduce((s, i) => s + i.amount, 0);
@@ -544,6 +615,7 @@
             document.getElementById('stat-goals').innerText = `${tG} ₽`;
             document.getElementById('stat-savings').innerText = `${tS} ₽`;
 
+            // История
             document.getElementById('list-history').innerHTML = '';
             if (data.history.length === 0) {
                 document.getElementById('list-history').innerHTML = '<p style="color:#fff; text-align:center; font-size:16px;">История пока пуста</p>';
@@ -581,7 +653,6 @@
             
             document.getElementById('date-btn').style.display = type === 'savings' ? 'none' : 'flex';
             
-            // Сброс выбора иконки
             selectedIcon = '💳';
             document.getElementById('in-icon').value = selectedIcon;
 
@@ -609,7 +680,6 @@
                 document.getElementById('date-btn').innerHTML = `Срок: ${formatted} <span>📅</span>`;
             }
 
-            // ПРИНУДИТЕЛЬНО ПОДСВЕЧИВАЕМ НУЖНУЮ ИКОНКУ
             const buttons = document.querySelectorAll('.icon-btn');
             buttons.forEach(btn => {
                 if (btn.innerText.trim() === selectedIcon) {
@@ -713,12 +783,7 @@
             });
 
             if (navigator.share) {
-                navigator.share({
-                    title: 'Мой финансовый отчет',
-                    text: report
-                }).catch(err => {
-                    copyToClipboard(report);
-                });
+                navigator.share({ title: 'Мой финансовый отчет', text: report }).catch(err => copyToClipboard(report));
             } else {
                 copyToClipboard(report);
             }
